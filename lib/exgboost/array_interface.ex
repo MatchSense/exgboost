@@ -4,7 +4,7 @@ defmodule EXGBoost.ArrayInterface do
 
   @typedoc """
   The XGBoost C API uses and is moving towards mainly supporting the use of
-  JSON-Encoded NumPy ArrayyInterface format to pass data to and from the C API. This struct
+  JSON-Encoded NumPy ArrayInterface format to pass data to and from the C API. This struct
   is used to represent the ArrayInterface format.
 
   If you wish to use the EXGBoost.NIF library directly, this will be the desired format
@@ -17,7 +17,7 @@ defmodule EXGBoost.ArrayInterface do
   @type t :: %__MODULE__{
           typestr: String.t(),
           shape: tuple(),
-          address: pos_integer(),
+      address: non_neg_integer(),
           readonly: boolean(),
           tensor: Nx.Tensor.t(),
           binary: binary()
@@ -94,11 +94,41 @@ defmodule EXGBoost.ArrayInterface do
       {"data", [address, readonly]}, acc ->
         [{:address, address} | [{:readonly, readonly} | acc]]
 
+      {:data, [address, readonly]}, acc ->
+        [{:address, address} | [{:readonly, readonly} | acc]]
+
       {"shape", shape}, acc ->
         [{:shape, List.to_tuple(shape)} | acc]
 
-      {key, value}, acc ->
-        [{String.to_existing_atom(key), value} | acc]
+      {:shape, shape}, acc ->
+        [{:shape, List.to_tuple(shape)} | acc]
+
+      {"typestr", typestr}, acc ->
+        [{:typestr, typestr} | acc]
+
+      {:typestr, typestr}, acc ->
+        [{:typestr, typestr} | acc]
+
+      {"version", version}, acc ->
+        [{:version, version} | acc]
+
+      {:version, version}, acc ->
+        [{:version, version} | acc]
+
+      {"tensor", tensor}, acc ->
+        [{:tensor, tensor} | acc]
+
+      {:tensor, tensor}, acc ->
+        [{:tensor, tensor} | acc]
+
+      {"binary", binary}, acc ->
+        [{:binary, binary} | acc]
+
+      {:binary, binary}, acc ->
+        [{:binary, binary} | acc]
+
+      {_key, _value}, acc ->
+        acc
     end)
     |> then(&struct(__MODULE__, &1))
   end
@@ -107,7 +137,7 @@ defmodule EXGBoost.ArrayInterface do
   This function is used to convert Nx.Tensors to the ArrayInterface format.
 
   Example:
-    iex> EXGBoost.from_tensor(Nx.tensor([[1,2,3],[4,5,6]]))
+    iex> EXGBoost.ArrayInterface.from_tensor(Nx.tensor([[1,2,3],[4,5,6]]))
         #ArrayInterface<
         %{data: [4418559984, true], shape: [2, 3], typestr: "<i8", version: 3}
   """
@@ -144,12 +174,25 @@ defmodule EXGBoost.ArrayInterface do
   @spec get_tensor(EXGBoost.ArrayInterface.t()) :: Nx.Tensor.t()
   def get_tensor(%__MODULE__{tensor: nil} = arr_int) do
     num_items = arr_int.shape |> Tuple.to_list() |> Enum.product()
-    <<_endianess::utf8, char_code::binary-size(1), bytes::binary>> = arr_int.typestr
+    <<endianess::utf8, char_code::binary-size(1), bytes::binary>> = arr_int.typestr
+
+    if endianess not in [?<, ?|] do
+      raise ArgumentError,
+            "Unsupported endianness in typestr #{inspect(arr_int.typestr)}. " <>
+              "Expected little-endian ('<') or non-endian ('|')."
+    end
+
+    bit_width = String.to_integer(bytes) * 8
 
     nx_type =
       case char_code do
-        "i" -> {:s, String.to_integer(bytes) * 8}
-        other -> {String.to_existing_atom(other), String.to_integer(bytes) * 8}
+        "i" -> {:s, bit_width}
+        "u" -> {:u, bit_width}
+        "f" -> {:f, bit_width}
+        "c" -> {:c, bit_width}
+        other ->
+          raise ArgumentError,
+                "Unsupported typestr code #{inspect(other)} in #{inspect(arr_int.typestr)}"
       end
 
     tensor_bin =
