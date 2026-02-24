@@ -19,8 +19,8 @@ defmodule EXGBoost.ArrayInterface do
           shape: tuple(),
           address: non_neg_integer(),
           readonly: boolean(),
-          tensor: Nx.Tensor.t(),
-          binary: binary()
+          tensor: Nx.Tensor.t() | nil,
+          binary: binary() | nil
         }
 
   @enforce_keys [:typestr, :shape, :address, :readonly]
