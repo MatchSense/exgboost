@@ -7,6 +7,7 @@ static ERL_NIF_TERM make_DMatrix_resource(ErlNifEnv *env,
       enif_alloc_resource(DMatrix_RESOURCE_TYPE, sizeof(DMatrixHandle *));
   if (resource != NULL) {
     *resource = handle;
+    // BEAM resource now owns the handle and releases it in resource cleanup.
     ret = exg_ok(env, enif_make_resource(env, resource));
     enif_release_resource(resource);
   } else {
@@ -278,6 +279,7 @@ ERL_NIF_TERM EXGDMatrixSetStrFeatureInfo(ErlNifEnv *env, int argc,
     goto END;
   }
   handle = *resource;
+  // XGBoost reads features during the call; caller keeps ownership.
   result = XGDMatrixSetStrFeatureInfo(handle, field,
                                       (const char **)features, num_features);
   if (result == 0) {
@@ -286,6 +288,7 @@ ERL_NIF_TERM EXGDMatrixSetStrFeatureInfo(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
   }
 END:
+  // Helper-allocated buffers must be reclaimed on all paths.
   if (features != NULL) {
     exg_free_string_list(features, num_features);
   }
@@ -328,6 +331,7 @@ ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc,
   if (result == 0) {
     ERL_NIF_TERM arr[out_size];
     for (bst_ulong i = 0; i < out_size; ++i) {
+      // enif_make_string materializes a BEAM term; no temporary C copy needed.
       arr[i] = enif_make_string(env, c_out_features[i], ERL_NIF_LATIN1);
     }
     ret = exg_ok(env, enif_make_list_from_array(env, arr, out_size));
@@ -614,6 +618,7 @@ ERL_NIF_TERM EXGDMatrixGetFloatInfo(ErlNifEnv *env, int argc,
   if (result == 0) {
     arr = enif_alloc(sizeof(ERL_NIF_TERM) * len);
     for (int i = 0; i < len; i++) {
+      // Values are copied into BEAM-managed terms here.
       arr[i] = enif_make_double(env, out[i]);
     }
     ret = exg_ok(env, enif_make_list_from_array(env, arr, len));
@@ -663,6 +668,7 @@ ERL_NIF_TERM EXGDMatrixGetUIntInfo(ErlNifEnv *env, int argc,
   if (result == 0) {
     arr = enif_alloc(sizeof(ERL_NIF_TERM) * len);
     for (int i = 0; i < len; i++) {
+      // Values are copied into BEAM-managed terms here.
       arr[i] = enif_make_uint(env, out[i]);
     }
     ret = exg_ok(env, enif_make_list_from_array(env, arr, len));
@@ -751,6 +757,7 @@ ERL_NIF_TERM EXGDMatrixGetDataAsCSR(ErlNifEnv *env, int argc,
                       enif_make_list_from_array(env, indices, num_non_missing),
                       enif_make_list_from_array(env, data, num_non_missing)));
 END:
+  // Mixed allocators: enif_free for enif_alloc buffers, free for malloc buffers.
   if (config != NULL) {
     enif_free(config);
     config = NULL;

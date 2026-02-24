@@ -7,6 +7,7 @@ static ERL_NIF_TERM make_Booster_resource(ErlNifEnv *env,
       enif_alloc_resource(Booster_RESOURCE_TYPE, sizeof(BoosterHandle *));
   if (resource != NULL) {
     *resource = handle;
+    // BEAM resource now owns the handle and releases it in resource cleanup.
     ret = exg_ok(env, enif_make_resource(env, resource));
     enif_release_resource(resource);
   } else {
@@ -49,6 +50,7 @@ ERL_NIF_TERM EXGBoosterCreate(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
   }
 END:
+  // exg_get_dmatrix_list allocates this temporary array.
   exg_free_dmatrix_list(dmats);
   return ret;
 }
@@ -149,6 +151,7 @@ ERL_NIF_TERM EXGBoosterSetParam(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Booster parameter value must be a string");
     goto END;
   }
+  // XGBoost consumes name/value during this call; no ownership transfer.
   result = XGBoosterSetParam(booster, name, value);
   if (result == 0) {
     ret = enif_make_atom(env, "ok");
@@ -334,6 +337,7 @@ ERL_NIF_TERM EXGBoosterEvalOneIter(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
   }
 END:
+  // Helper-allocated arrays must be reclaimed on all paths.
   exg_free_dmatrix_list(dmats);
   exg_free_string_list(evnames, num_evnames);
   return ret;
@@ -548,6 +552,7 @@ ERL_NIF_TERM EXGBoosterGetStrFeatureInfo(ErlNifEnv *env, int argc,
   if (result == 0) {
     ERL_NIF_TERM arr[out_size];
     for (bst_ulong i = 0; i < out_size; ++i) {
+      // enif_make_string materializes a BEAM term; no temporary C copy needed.
       arr[i] = enif_make_string(env, c_out_features[i], ERL_NIF_LATIN1);
     }
     ret = exg_ok(env, enif_make_list_from_array(env, arr, out_size));
@@ -629,6 +634,7 @@ static ERL_NIF_TERM collect_prediction_results(ErlNifEnv *env,
   ERL_NIF_TERM shape = enif_make_tuple_from_array(env, shape_arr, out_dim);
   ERL_NIF_TERM result_arr[out_len];
   for (bst_ulong i = 0; i < out_len; ++i) {
+    // Values are copied into BEAM-managed terms here.
     result_arr[i] = enif_make_double(env, out_result[i]);
   }
   return exg_ok(env, enif_make_tuple2(
