@@ -458,10 +458,7 @@ ERL_NIF_TERM EXGBoosterGetAttrNames(ErlNifEnv *env, int argc,
   if (result == 0) {
     ERL_NIF_TERM arr[out_len];
     for (bst_ulong i = 0; i < out_len; ++i) {
-      char *local = enif_alloc(strlen(out[i]) + 1);
-      strcpy(local, out[i]);
-      arr[i] = enif_make_string(env, local, ERL_NIF_LATIN1);
-      // TODO: Do we free here or is it handled by the XGBoost library / BEAM?
+      arr[i] = enif_make_string(env, out[i], ERL_NIF_LATIN1);
     }
     ret = exg_ok(env, enif_make_list_from_array(env, arr, out_len));
   } else {
@@ -551,10 +548,7 @@ ERL_NIF_TERM EXGBoosterGetStrFeatureInfo(ErlNifEnv *env, int argc,
   if (result == 0) {
     ERL_NIF_TERM arr[out_size];
     for (bst_ulong i = 0; i < out_size; ++i) {
-      char *local = enif_alloc(strlen(c_out_features[i]) + 1);
-      strcpy(local, c_out_features[i]);
-      arr[i] = enif_make_string(env, local, ERL_NIF_LATIN1);
-      // TODO: Do we free here or is it handled by the XGBoost library / BEAM?
+      arr[i] = enif_make_string(env, c_out_features[i], ERL_NIF_LATIN1);
     }
     ret = exg_ok(env, enif_make_list_from_array(env, arr, out_size));
   } else {
@@ -1139,10 +1133,7 @@ ERL_NIF_TERM EXGBoosterDumpModelEx(ErlNifEnv *env, int argc,
   if (result == 0) {
     ERL_NIF_TERM arr[out_len];
     for (bst_ulong i = 0; i < out_len; ++i) {
-      char *local = enif_alloc(strlen(out_dump_array[i]) + 1);
-      strcpy(local, out_dump_array[i]);
-      arr[i] = enif_make_string(env, local, ERL_NIF_LATIN1);
-      // TODO: Do we free here or is it handled by the XGBoost library / BEAM ?
+      arr[i] = enif_make_string(env, out_dump_array[i], ERL_NIF_LATIN1);
     }
     ret = exg_ok(env, enif_make_list_from_array(env, arr, out_len));
   } else {
