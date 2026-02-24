@@ -278,7 +278,8 @@ ERL_NIF_TERM EXGDMatrixSetStrFeatureInfo(ErlNifEnv *env, int argc,
     goto END;
   }
   handle = *resource;
-  result = XGDMatrixSetStrFeatureInfo(handle, field, features, num_features);
+  result = XGDMatrixSetStrFeatureInfo(handle, field,
+                                      (const char **)features, num_features);
   if (result == 0) {
     ret = ok_atom(env);
   } else {
@@ -580,7 +581,7 @@ ERL_NIF_TERM EXGDMatrixGetFloatInfo(ErlNifEnv *env, int argc,
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   char *field = NULL;
-  float *out = NULL;
+  const float *out = NULL;
   bst_ulong len = 0;
   int result = -1;
   ERL_NIF_TERM ret = 0;
@@ -634,7 +635,7 @@ ERL_NIF_TERM EXGDMatrixGetUIntInfo(ErlNifEnv *env, int argc,
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   char *field = NULL;
-  unsigned *out = NULL;
+  const unsigned *out = NULL;
   bst_ulong len = 0;
   int result = -1;
   ERL_NIF_TERM ret = 0;
