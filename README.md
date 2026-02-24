@@ -230,3 +230,12 @@ Recommended fork maintenance cadence:
 - Keep precompiled artefacts and checksums aligned with each release tag (`.github/workflows/precompile.yml`).
 - When upgrading `nx`, verify supported Elixir/OTP versions in CI matrix and `mix.exs`.
 
+Native compatibility checks:
+
+- Run `make check-xgboost-c-api` after changing `XGBOOST_GIT_REV` or native C files.
+- Run `mix test test/nif_test.exs` to validate runtime behavior after the API check passes.
+- To compare API declarations between two XGBoost versions, run:
+  `scripts/check_xgboost_c_api.sh --compare <old-include-dir> <new-include-dir>`
+- Or use make to fetch and compare tags directly:
+  `make compare-xgboost-c-api OLD_XGBOOST_GIT_REV=v3.0.5 NEW_XGBOOST_GIT_REV=v3.1.3`
+
