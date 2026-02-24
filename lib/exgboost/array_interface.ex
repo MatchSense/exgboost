@@ -17,7 +17,7 @@ defmodule EXGBoost.ArrayInterface do
   @type t :: %__MODULE__{
           typestr: String.t(),
           shape: tuple(),
-      address: non_neg_integer(),
+          address: non_neg_integer(),
           readonly: boolean(),
           tensor: Nx.Tensor.t(),
           binary: binary()
@@ -158,6 +158,7 @@ defmodule EXGBoost.ArrayInterface do
       end
 
     binary = Nx.to_binary(tensor)
+
     tensor_addr =
       EXGBoost.NIF.get_binary_address(binary) |> EXGBoost.Internal.unwrap!()
 
@@ -186,10 +187,18 @@ defmodule EXGBoost.ArrayInterface do
 
     nx_type =
       case char_code do
-        "i" -> {:s, bit_width}
-        "u" -> {:u, bit_width}
-        "f" -> {:f, bit_width}
-        "c" -> {:c, bit_width}
+        "i" ->
+          {:s, bit_width}
+
+        "u" ->
+          {:u, bit_width}
+
+        "f" ->
+          {:f, bit_width}
+
+        "c" ->
+          {:c, bit_width}
+
         other ->
           raise ArgumentError,
                 "Unsupported typestr code #{inspect(other)} in #{inspect(arr_int.typestr)}"
