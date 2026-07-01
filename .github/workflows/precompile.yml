@@ -10,12 +10,19 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       MIX_ENV: "prod"
+      CC: gcc-14
+      CXX: g++-14
     strategy:
       matrix:
-        otp: ["28.3"]
-        elixir: ["1.18.4", "1.19.5"]
+        include:
+          - otp: "28.3"
+            elixir: "1.18.4"
+          - otp: "28.3"
+            elixir: "1.19.5"
+          - otp: "29.0.2"
+            elixir: "1.20.2"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}
@@ -24,10 +31,11 @@ jobs:
         run: |
           mix local.hex --force
           mix local.rebar --force
-      - name: Install system dependecies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip \
+            cmake ninja-build gcc-14 g++-14 \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             gcc-riscv64-linux-gnu g++-riscv64-linux-gnu
       - name: Mix Test
@@ -46,25 +54,16 @@ jobs:
             cache/*.tar.gz
 
   macos:
-    runs-on: ${{matrix.runner}}
-    # Homebrew supports versioned Erlang/OTP but not Elixir
-    # It's a deliberate design decision from Homebrew to
-    # only support versioned distributions for certain packages
-    name: Mac (ARM) Erlang/OTP ${{matrix.otp}} / Elixir
+    runs-on: macos-15
+    name: Mac (ARM) Erlang/OTP 29.0.2 / Elixir 1.20.2
     env:
       MIX_ENV: "prod"
-    strategy:
-      matrix:
-        runner: ["macos-15"]
-        otp: ["27.0", "28.0"]
-        elixir: ["1.18.4"]
     steps:
-      - uses: actions/checkout@v3
-      - uses: asdf-vm/actions/install@v2
+      - uses: actions/checkout@v5
+      - uses: erlef/setup-beam@v1
         with:
-          tool_versions: |
-            erlang ${{matrix.otp}}
-            elixir ${{matrix.elixir}}
+          otp-version: "29.0.2"
+          elixir-version: "1.20.2"
       - name: Install libomp
         run: |
           brew install libomp

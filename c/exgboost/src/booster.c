@@ -300,7 +300,7 @@ ERL_NIF_TERM EXGBoosterEvalOneIter(ErlNifEnv *env, int argc,
   int iter = -1;
   unsigned num_dmats = 0;
   unsigned num_evnames = 0;
-  char *out = NULL;
+  const char *out = NULL;
   ERL_NIF_TERM ret = -1;
   int result = -1;
   if (4 != argc) {
@@ -329,7 +329,7 @@ ERL_NIF_TERM EXGBoosterEvalOneIter(ErlNifEnv *env, int argc,
     ret = exg_error(env, "dmats and evnames must have the same length");
     goto END;
   }
-  result = XGBoosterEvalOneIter(booster, iter, dmats, evnames,
+  result = XGBoosterEvalOneIter(booster, iter, dmats, (const char **)evnames,
                                 (bst_ulong)num_dmats, &out);
   if (result == 0) {
     ret = exg_ok(env, enif_make_string(env, out, ERL_NIF_LATIN1));
@@ -348,7 +348,7 @@ ERL_NIF_TERM EXGBoosterGetAttr(ErlNifEnv *env, int argc,
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   char *key = NULL;
-  char *out = NULL;
+  const char *out = NULL;
   ERL_NIF_TERM ret = -1;
   int result = -1;
   int success = -1;
@@ -444,7 +444,7 @@ ERL_NIF_TERM EXGBoosterGetAttrNames(ErlNifEnv *env, int argc,
                                     const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
-  char **out = NULL;
+  const char **out = NULL;
   bst_ulong out_len = 0;
   ERL_NIF_TERM ret = -1;
   int result = -1;
@@ -504,7 +504,8 @@ ERL_NIF_TERM EXGBoosterSetStrFeatureInfo(ErlNifEnv *env, int argc,
     goto END;
   }
   handle = *resource;
-  result = XGBoosterSetStrFeatureInfo(handle, field, features, num_features);
+  result = XGBoosterSetStrFeatureInfo(handle, field, (const char **)features,
+                                      num_features);
   if (result == 0) {
     ret = ok_atom(env);
   } else {
@@ -572,10 +573,10 @@ ERL_NIF_TERM EXGBoosterFeatureScore(ErlNifEnv *env, int argc,
   BoosterHandle **booster_resource = NULL;
   char *config = NULL;
   bst_ulong out_n_features = 0;
-  char **out_features = NULL;
+  const char **out_features = NULL;
   bst_ulong out_dim = 0;
-  bst_ulong *out_shape = NULL;
-  float *out_scores = NULL;
+  const bst_ulong *out_shape = NULL;
+  const float *out_scores = NULL;
   ERL_NIF_TERM ret = -1;
   int result = -1;
   if (2 != argc) {
@@ -622,9 +623,9 @@ END:
 }
 
 static ERL_NIF_TERM collect_prediction_results(ErlNifEnv *env,
-                                               bst_ulong *out_shape,
+                                               const bst_ulong *out_shape,
                                                bst_ulong out_dim,
-                                               float *out_result) {
+                                               const float *out_result) {
   bst_ulong out_len = 1;
   ERL_NIF_TERM shape_arr[out_dim];
   for (bst_ulong j = 0; j < out_dim; ++j) {
@@ -649,9 +650,9 @@ ERL_NIF_TERM EXGBoosterPredictFromDMatrix(ErlNifEnv *env, int argc,
   DMatrixHandle dmatrix;
   DMatrixHandle **dmatrix_resource = NULL;
   char *config = NULL;
-  bst_ulong *out_shape = NULL;
+  const bst_ulong *out_shape = NULL;
   bst_ulong out_dim = 0;
-  float *out_result = NULL;
+  const float *out_result = NULL;
 
   ERL_NIF_TERM ret = -1;
   int result = -1;
@@ -697,9 +698,9 @@ ERL_NIF_TERM EXGBoosterPredictFromDense(ErlNifEnv *env, int argc,
   DMatrixHandle **proxy_resource = NULL;
   char *values = NULL;
   char *config = NULL;
-  bst_ulong *out_shape = NULL;
+  const bst_ulong *out_shape = NULL;
   bst_ulong out_dim = 0;
-  float *out_result = NULL;
+  const float *out_result = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
   if (4 != argc) {
@@ -752,10 +753,10 @@ ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
   char *indices = NULL;
   char *data = NULL;
   char *config = NULL;
-  bst_ulong ncols = 0;
-  bst_ulong *out_shape = NULL;
+  int ncols = 0;
+  const bst_ulong *out_shape = NULL;
   bst_ulong out_dim = 0;
-  float *out_result = NULL;
+  const float *out_result = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
   if (7 != argc) {
@@ -783,6 +784,10 @@ ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Ncols must be an integer");
     goto END;
   }
+  if (ncols < 0) {
+    ret = exg_error(env, "Ncols must be non-negative");
+    goto END;
+  }
   if (!exg_get_string(env, argv[5], &config)) {
     ret = exg_error(env, "Config must be a JSON-encoded string");
     goto END;
@@ -795,8 +800,9 @@ ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
   }
   booster = *booster_resource;
   result =
-      XGBoosterPredictFromCSR(booster, indptr, indices, data, ncols, config,
-                              proxy, &out_shape, &out_dim, &out_result);
+      XGBoosterPredictFromCSR(booster, indptr, indices, data,
+                              (bst_ulong)ncols, config, proxy, &out_shape,
+                              &out_dim, &out_result);
   if (result == 0) {
     ret = collect_prediction_results(env, out_shape, out_dim, out_result);
   } else {
@@ -890,7 +896,7 @@ ERL_NIF_TERM EXGBoosterSerializeToBuffer(ErlNifEnv *env, int argc,
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   bst_ulong out_len = 0;
-  char *out_buf = NULL;
+  const char *out_buf = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
   ErlNifBinary out_bin;
@@ -995,7 +1001,7 @@ ERL_NIF_TERM EXGBoosterSaveModelToBuffer(ErlNifEnv *env, int argc,
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   bst_ulong out_len = 0;
-  char *out_buf = NULL;
+  const char *out_buf = NULL;
   char *config = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
@@ -1038,7 +1044,7 @@ ERL_NIF_TERM EXGBoosterSaveJsonConfig(ErlNifEnv *env, int argc,
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   bst_ulong out_len = 0;
-  char *out_buf = NULL;
+  const char *out_buf = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
   ErlNifBinary out_bin;
@@ -1109,7 +1115,7 @@ ERL_NIF_TERM EXGBoosterDumpModelEx(ErlNifEnv *env, int argc,
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   bst_ulong out_len = 0;
-  char **out_dump_array = NULL;
+  const char **out_dump_array = NULL;
   char *fmap = NULL;
   int with_stats = 0;
   char *format = NULL;

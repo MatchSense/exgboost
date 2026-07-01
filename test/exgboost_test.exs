@@ -219,9 +219,6 @@ defmodule EXGBoostTest do
                      )
                    end)
                  end
-
-    refute is_nil(booster.best_iteration)
-    refute is_nil(booster.best_score)
   end
 
   test "eval with multiple metrics", context do

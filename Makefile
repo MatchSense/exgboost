@@ -54,13 +54,13 @@ else
 endif
 
 $(EXGBOOST_SO): $(EXGBOOST_CACHE_SO)
-	@ mkdir -p $(PRIV_DIR)
+	@mkdir -p $(PRIV_DIR)
 	cp -a $(abspath $(EXGBOOST_CACHE_LIB_DIR)) $(EXGBOOST_LIB_DIR) ; \
 	cp -a $(abspath $(EXGBOOST_CACHE_SO)) $(EXGBOOST_SO) ;
 
 $(EXGBOOST_CACHE_SO): $(XGBOOST_LIB_DIR_FLAG) $(C_SRCS)
 	@mkdir -p cache
-	cp -a $(XGBOOST_LIB_DIR) $(EXGBOOST_CACHE_LIB_DIR)
+	cp -R $(XGBOOST_LIB_DIR) $(EXGBOOST_CACHE_LIB_DIR)
 	cp $(XGBOOST_DIR)/lib/$(LIBXGBOOST) $(EXGBOOST_CACHE_LIB_DIR)
 	$(CC) $(CFLAGS) $(wildcard $(EXGBOOST_DIR)/src/*.c) $(LDFLAGS) -o $(EXGBOOST_CACHE_SO)
 	$(POST_INSTALL)
@@ -68,7 +68,7 @@ $(EXGBOOST_CACHE_SO): $(XGBOOST_LIB_DIR_FLAG) $(C_SRCS)
 # This new target handles fetching the source code.
 # It only runs if the .git directory inside the source folder is missing.
 $(XGBOOST_DIR)/.git:
-	mkdir -p $(XGBOOST_DIR) && \
+	@mkdir -p $(XGBOOST_DIR) && \
 		cd $(XGBOOST_DIR) && \
 		git init && \
 		git remote add origin $(XGBOOST_GIT_REPO) && \

@@ -59,7 +59,7 @@ END:
 
 ERL_NIF_TERM EXGBGetGlobalConfig(ErlNifEnv *env, int argc,
                                  const ERL_NIF_TERM argv[]) {
-  char *out = NULL;
+  const char *out = NULL;
   int result = -1;
   ERL_NIF_TERM ret = 0;
   if (argc != 0) {
@@ -68,7 +68,7 @@ ERL_NIF_TERM EXGBGetGlobalConfig(ErlNifEnv *env, int argc,
   }
   // No need to free out, it's a pointer to a static string defined in the
   // xgboost config struct
-  result = XGBGetGlobalConfig((char const **)&out);
+  result = XGBGetGlobalConfig(&out);
   if (result == 0) {
     ret = exg_ok(env, enif_make_string(env, out, ERL_NIF_LATIN1));
   } else {
