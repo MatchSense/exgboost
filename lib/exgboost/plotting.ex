@@ -392,9 +392,7 @@ defmodule EXGBoost.Plotting do
     ]
   end
 
-  HTTPoison.start()
-
-  @schema HTTPoison.get!("https://vega.github.io/schema/vega/v5.json").body
+  @schema Req.get!("https://vega.github.io/schema/vega/v5.json").body
           |> Jason.decode!()
           |> ExJsonSchema.Schema.resolve()
 
