@@ -396,12 +396,11 @@ defmodule EXGBoost.Plotting do
   :ssl.start()
 
   @schema (fn ->
-            {:ok, {{_, 200, _}, _, body}} =
-              :httpc.request(:get, {"https://vega.github.io/schema/vega/v5.json", []}, [], [])
+             {:ok, {{_, 200, _}, _, body}} =
+               :httpc.request(:get, {"https://vega.github.io/schema/vega/v5.json", []}, [], [])
 
-            body |> to_string() |> Jason.decode!() |> ExJsonSchema.Schema.resolve()
-          end).()
-
+             body |> to_string() |> Jason.decode!() |> ExJsonSchema.Schema.resolve()
+           end).()
 
   @mark_text_doc "Accepts a keyword list of Vega `text` Mark properties. Reference [here](https://vega.github.io/vega/docs/marks/text/) for more details. Accepts either a string (expected to be valid Vega property names) or Elixir-styled atom. Note that keys are snake-cased instead of camel-case (e.g. Vega `fontSize` becomes `font_size`)"
   @mark_rect_doc "Accepts a keyword list of Vega `rect` Mark properties. Reference [here](https://vega.github.io/vega/docs/marks/rect/) for more details. Accepts either a string (expected to be valid Vega property names) or Elixir-styled atom. Note that keys are snake-cased instead of camel-case (e.g. Vega `fontSize` becomes `font_size`)"
