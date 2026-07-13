@@ -100,6 +100,13 @@ defmodule EXGBoost.NIF do
   def dmatrix_create_from_file(_file_uri, _silent),
     do: :erlang.nif_error(:not_implemented)
 
+  @doc """
+  Create a DMatrix from a URI.
+
+  XGBoost deprecated text file input (LIBSVM and CSV) in 3.1 and logs a warning the first
+  time this is called in a process. Prefer building a DMatrix from an in-memory tensor
+  with `EXGBoost.DMatrix.from_tensor/2`.
+  """
   def dmatrix_create_from_uri(_config), do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_create_from_mat(binary, integer(), integer(), float()) ::

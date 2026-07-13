@@ -208,8 +208,15 @@ defmodule EXGBoost.DMatrix do
     end
   end
 
+  @deprecated "Since 0.9.1 -- Read the file yourself and use `EXGBoost.DMatrix.from_tensor/2` instead"
   @doc """
   Create a DMatrix from a file.
+
+  > #### Deprecated {: .warning}
+  >
+  > XGBoost deprecated text file input (LIBSVM and CSV) in 3.1 and will remove it in a
+  > future release. Loading a file through this function emits a deprecation warning from
+  > XGBoost itself. Parse the file into an `Nx.Tensor` and use `from_tensor/2` instead.
 
   Refer to https://xgboost.readthedocs.io/en/latest/tutorials/external_memory.html#text-file-inputs
   for proper formatting of the file and the options.
