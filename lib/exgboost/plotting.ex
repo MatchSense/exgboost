@@ -1761,4 +1761,3 @@ defmodule EXGBoost.Plotting do
     IO.inspect(env)
   end
 end
-
