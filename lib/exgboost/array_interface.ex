@@ -157,7 +157,7 @@ defmodule EXGBoost.ArrayInterface do
           "<#{Atom.to_string(tensor_type)}#{div(type_width, 8)}"
       end
 
-    binary = Nx.to_binary(tensor)
+    binary = tensor |> Nx.to_binary() |> ensure_off_heap_binary()
 
     tensor_addr =
       EXGBoost.NIF.get_binary_address(binary) |> EXGBoost.Internal.unwrap!()
@@ -170,6 +170,15 @@ defmodule EXGBoost.ArrayInterface do
       tensor: tensor,
       binary: binary
     }
+  end
+
+  # Binaries ≤64 bytes are heap-allocated and can be moved by GC, invalidating
+  # any raw address captured by a NIF. Padding to >64 bytes forces a refc binary,
+  # which lives off-heap and has a stable address for the duration of the NIF call.
+  defp ensure_off_heap_binary(binary) when byte_size(binary) > 64, do: binary
+
+  defp ensure_off_heap_binary(binary) do
+    binary <> :binary.copy(<<0>>, 65 - byte_size(binary))
   end
 
   @spec get_tensor(EXGBoost.ArrayInterface.t()) :: Nx.Tensor.t()
