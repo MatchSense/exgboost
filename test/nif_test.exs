@@ -90,10 +90,14 @@ defmodule NifTest do
         1.0
       ])
 
+    indptr_iface = from_tensor(indptr)
+    indices_iface = from_tensor(indices)
+    data_iface = from_tensor(data)
+
     assert EXGBoost.NIF.dmatrix_create_from_sparse(
-             from_tensor(indptr) |> Jason.encode!(),
-             from_tensor(indices) |> Jason.encode!(),
-             from_tensor(data) |> Jason.encode!(),
+             Jason.encode!(indptr_iface),
+             Jason.encode!(indices_iface),
+             Jason.encode!(data_iface),
              ncols,
              config,
              "csr"
@@ -102,9 +106,9 @@ defmodule NifTest do
              :error
 
     assert EXGBoost.NIF.dmatrix_create_from_sparse(
-             from_tensor(indptr) |> Jason.encode!(),
-             from_tensor(indices) |> Jason.encode!(),
-             from_tensor(data) |> Jason.encode!(),
+             Jason.encode!(indptr_iface),
+             Jason.encode!(indices_iface),
+             Jason.encode!(data_iface),
              ncols,
              config,
              "csc"
@@ -114,9 +118,9 @@ defmodule NifTest do
 
     {status, _} =
       EXGBoost.NIF.dmatrix_create_from_sparse(
-        from_tensor(indptr) |> Jason.encode!(),
-        from_tensor(indices) |> Jason.encode!(),
-        from_tensor(data) |> Jason.encode!(),
+        Jason.encode!(indptr_iface),
+        Jason.encode!(indices_iface),
+        Jason.encode!(data_iface),
         ncols,
         config,
         "csa"
