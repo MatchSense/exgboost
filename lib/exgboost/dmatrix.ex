@@ -127,13 +127,16 @@ defmodule EXGBoost.DMatrix do
     args = Enum.into(Keyword.merge(meta_opts, str_opts), %{})
 
     Enum.each(meta_opts, fn {key, value} ->
-      data_interface = ArrayInterface.from_tensor(value) |> Jason.encode!()
+      iface = ArrayInterface.from_tensor(value)
+      data_interface = Jason.encode!(iface)
 
       EXGBoost.NIF.dmatrix_set_info_from_interface(
         dmat.ref,
         Atom.to_string(key),
         data_interface
       )
+
+      _keep_alive = iface.binary
     end)
 
     Enum.each(str_opts, fn {key, value} ->
@@ -311,13 +314,16 @@ defmodule EXGBoost.DMatrix do
     config = Enum.into(config_opts, %{}, fn {key, value} -> {Atom.to_string(key), value} end)
     format = Keyword.fetch!(format_opts, :format)
 
+    tensor_iface = ArrayInterface.from_tensor(tensor)
+
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        Jason.encode!(ArrayInterface.from_tensor(tensor)),
+        Jason.encode!(tensor_iface),
         Jason.encode!(config)
       )
       |> Internal.unwrap!()
 
+    _keep_alive = tensor_iface.binary
     set_params(%__MODULE__{ref: dmat, format: format}, opts)
   end
 
@@ -370,17 +376,22 @@ defmodule EXGBoost.DMatrix do
       raise ArgumentError, "Sparse format must be :csr or :csc"
     end
 
+    indptr_iface = ArrayInterface.from_tensor(indptr)
+    indices_iface = ArrayInterface.from_tensor(indices)
+    data_iface = ArrayInterface.from_tensor(data)
+
     dmat =
       EXGBoost.NIF.dmatrix_create_from_sparse(
-        Jason.encode!(ArrayInterface.from_tensor(indptr)),
-        Jason.encode!(ArrayInterface.from_tensor(indices)),
-        Jason.encode!(ArrayInterface.from_tensor(data)),
+        Jason.encode!(indptr_iface),
+        Jason.encode!(indices_iface),
+        Jason.encode!(data_iface),
         n,
         Jason.encode!(config),
         Atom.to_string(format)
       )
       |> Internal.unwrap!()
 
+    _keep_alive = {indptr_iface.binary, indices_iface.binary, data_iface.binary}
     set_params(%__MODULE__{ref: dmat, format: format}, opts)
   end
 end

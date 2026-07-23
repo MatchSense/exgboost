@@ -233,7 +233,8 @@ defmodule EXGBoost do
 
     case data do
       %Nx.Tensor{} = data ->
-        data_interface = ArrayInterface.from_tensor(data) |> Jason.encode!()
+        interface = ArrayInterface.from_tensor(data)
+        data_interface = Jason.encode!(interface)
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_dense(
@@ -244,30 +245,35 @@ defmodule EXGBoost do
           )
           |> Internal.unwrap!()
 
+        # Keep interface alive until after the NIF returns so its binary isn't
+        # freed while the NIF holds a raw pointer to it.
+        _keep_alive = interface.binary
         Nx.tensor(preds) |> Nx.reshape(shape)
 
       {%Nx.Tensor{} = indptr, %Nx.Tensor{} = indices, %Nx.Tensor{} = values, ncol} ->
-        indptr_interface = ArrayInterface.from_tensor(indptr) |> Jason.encode!()
-        indices_interface = ArrayInterface.from_tensor(indices) |> Jason.encode!()
-        values_interface = ArrayInterface.from_tensor(values) |> Jason.encode!()
+        indptr_interface = ArrayInterface.from_tensor(indptr)
+        indices_interface = ArrayInterface.from_tensor(indices)
+        values_interface = ArrayInterface.from_tensor(values)
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_csr(
             boostr.ref,
-            indptr_interface,
-            indices_interface,
-            values_interface,
+            Jason.encode!(indptr_interface),
+            Jason.encode!(indices_interface),
+            Jason.encode!(values_interface),
             ncol,
             Jason.encode!(params),
             proxy
           )
           |> Internal.unwrap!()
 
+        _keep_alive = {indptr_interface.binary, indices_interface.binary, values_interface.binary}
         Nx.tensor(preds) |> Nx.reshape(shape)
 
       data ->
         data = Nx.concatenate(data)
-        data_interface = ArrayInterface.from_tensor(data) |> Jason.encode!()
+        interface = ArrayInterface.from_tensor(data)
+        data_interface = Jason.encode!(interface)
 
         {shape, preds} =
           EXGBoost.NIF.booster_predict_from_dense(
@@ -278,6 +284,7 @@ defmodule EXGBoost do
           )
           |> Internal.unwrap!()
 
+        _keep_alive = interface.binary
         Nx.tensor(preds) |> Nx.reshape(shape)
     end
   end
