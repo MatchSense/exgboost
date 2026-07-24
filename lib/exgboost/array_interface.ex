@@ -41,18 +41,18 @@ defmodule EXGBoost.ArrayInterface do
           },
           opts
         ) do
+      # Explicitly order keys for consistent output across Elixir/Erlang versions
+      data = [
+        readonly: readonly,
+        shape: Tuple.to_list(shape),
+        typestr: typestr,
+        version: version
+      ]
+
       concat([
         "#ArrayInterface<",
         line(),
-        to_doc(
-          %{
-            typestr: typestr,
-            shape: Tuple.to_list(shape),
-            readonly: readonly,
-            version: version
-          },
-          opts
-        ),
+        to_doc(Map.new(data), opts),
         line(),
         ">"
       ])
