@@ -200,7 +200,7 @@ ERL_NIF_TERM exg_get_binary_from_address(ErlNifEnv *env, int argc,
     ret = exg_error(env, "exg_get_binary_from_address: invalid size");
     goto END;
   }
-  
+
   // Use enif_make_new_binary for cleaner memory management
   ERL_NIF_TERM binary_term;
   unsigned char *dest = enif_make_new_binary(env, size, &binary_term);

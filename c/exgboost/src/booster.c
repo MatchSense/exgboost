@@ -949,7 +949,7 @@ ERL_NIF_TERM EXGBoosterSerializeToBuffer(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
     goto END;
   }
-  
+
   // Use enif_make_new_binary for cleaner memory management
   ERL_NIF_TERM binary_term;
   unsigned char *dest = enif_make_new_binary(env, out_len, &binary_term);
@@ -1066,7 +1066,7 @@ ERL_NIF_TERM EXGBoosterSaveModelToBuffer(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
     goto END;
   }
-  
+
   // Use enif_make_new_binary for cleaner memory management
   ERL_NIF_TERM binary_term;
   unsigned char *dest = enif_make_new_binary(env, out_len, &binary_term);
@@ -1108,7 +1108,7 @@ ERL_NIF_TERM EXGBoosterSaveJsonConfig(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
     goto END;
   }
-  
+
   // Use enif_make_new_binary for cleaner memory management
   ERL_NIF_TERM binary_term;
   unsigned char *dest = enif_make_new_binary(env, out_len, &binary_term);
