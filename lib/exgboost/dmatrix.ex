@@ -146,6 +146,7 @@ defmodule EXGBoost.DMatrix do
   @doc """
   Slice the DMatrix and return a new DMatrix that only contains rindex.
   """
+  @spec slice(any(), Nx.Tensor.t()) :: reference()
   def slice(dmat, %Nx.Tensor{shape: {_rows}} = r_index, opts \\ [])
       when is_list(opts) do
     opts = Keyword.validate!(opts, allow_groups: false)

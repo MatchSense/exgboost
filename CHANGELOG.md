@@ -15,7 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Boolean type strictness (only `true`/`false` atoms accepted)
   - Shape overflow protection for extremely large dimensions
   - Endianness marker validation
-- `CONTRIBUTING.md` - developer guide with DO's and DON'Ts for NIF development, safety requirements, and testing  procedures.
+- `CONTRIBUTING.md` - developer guide with DO's and DON'Ts for NIF development, safety requirements, and testing procedures.
+- **yyjson JSON parser**: Vendored yyjson 0.10.0 (MIT license) for robust Array Interface JSON parsing in quantile-cut operations:
+  - Handles arbitrary field ordering and whitespace
+  - Supports multi-dimensional shapes (up to 8 dimensions)
+  - Comprehensive overflow protection in size calculations
+  - Better error handling than manual string parsing
+  - Single-file integration (~400KB source, compiles to ~70KB in shared library)
 
 ### Changed
 
@@ -39,8 +45,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `from_map/1` to ignore address values from incoming data, only extracting readonly flag
 
 - **DMatrix Improvements**:
+  - **Reduced NIF argument counts**: Refactored Array Interface NIFs to use tuple arguments for cleaner API:
+    - `dmatrix_create_from_sparse`: 15 → 6 arguments (3 tuples + 3 params)
+    - `dmatrix_create_from_dense`: 5 → 2 arguments (1 tuple + 1 param)
+    - `dmatrix_set_info_from_interface`: 6 → 3 arguments (1 tuple + 2 params)
+    - Each tuple packs `{binary, typestr, shape, readonly}` for one array
+    - Added `exg_get_array_interface_tuple()` helper to extract tuple components
+    - Prevents argument index mistakes and makes code more maintainable
   - `get_quantile_cut/1` refactored to return maps with `:binary`, `:typestr`, `:shape` instead of JSON with memory addresses
   - All data copying happens atomically within C before returning to Elixir
+  - **Hardened JSON parser**: Replaced fragile `strstr()`/`sscanf()` parsing with robust yyjson-based parser:
+    - Now supports multi-dimensional shapes instead of only 1D arrays
+    - Handles arbitrary JSON field ordering and whitespace
+    - Added divide-by-zero protection: `if (bytes_per_elem == 0) return 0;`
+    - Improved typestr parsing using `strtoul()` with errno checking
+    - Comprehensive overflow protection for all size calculations
   - Consolidated typestr parsing logic - `build_tensor_from_map/1` now uses shared `ArrayInterface.parse_typestr/1` helper
 
 - **Typestr Handling Improvements**:

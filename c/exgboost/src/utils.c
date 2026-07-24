@@ -14,6 +14,9 @@ static ERL_NIF_TERM ATOM_TRUE;
 static ERL_NIF_TERM ATOM_FALSE;
 static ERL_NIF_TERM ATOM_OK;
 static ERL_NIF_TERM ATOM_ERROR;
+static ERL_NIF_TERM ATOM_BINARY;
+static ERL_NIF_TERM ATOM_TYPESTR;
+static ERL_NIF_TERM ATOM_SHAPE;
 
 // Initialize atoms (call this from NIF load)
 void exg_init_atoms(ErlNifEnv *env) {
@@ -21,6 +24,9 @@ void exg_init_atoms(ErlNifEnv *env) {
   ATOM_FALSE = enif_make_atom(env, "false");
   ATOM_OK = enif_make_atom(env, "ok");
   ATOM_ERROR = enif_make_atom(env, "error");
+  ATOM_BINARY = enif_make_atom(env, "binary");
+  ATOM_TYPESTR = enif_make_atom(env, "typestr");
+  ATOM_SHAPE = enif_make_atom(env, "shape");
 }
 
 ERL_NIF_TERM exg_error(ErlNifEnv *env, const char *msg) {
@@ -240,7 +246,7 @@ static int exg_get_boolean(ErlNifEnv *env, ERL_NIF_TERM term, int *value) {
 // - Element size: Any positive integer that fits in size_t is accepted syntactically.
 //   XGBoost will validate whether it supports the specific type/width combination.
 // - The '|' marker is only valid for single-byte types (width 1).
-static int exg_parse_typestr(
+int exg_parse_typestr(
     const char *typestr,
     size_t *element_size_out,
     const char **error_msg
@@ -596,4 +602,33 @@ ERL_NIF_TERM exg_get_int_size(ErlNifEnv *env, int argc,
   ret = exg_ok(env, enif_make_int(env, size));
 END:
   return ret;
+}
+
+// So we don't expose ATOM_* directly to other files, provide a wrapper function.
+int exg_make_array_interface_map(
+    ErlNifEnv *env,
+    ERL_NIF_TERM binary_term,
+    ERL_NIF_TERM typestr_term,
+    ERL_NIF_TERM shape_term,
+    ERL_NIF_TERM *out_map
+) {
+  ERL_NIF_TERM keys[] = {
+    ATOM_BINARY,
+    ATOM_TYPESTR,
+    ATOM_SHAPE
+  };
+
+  ERL_NIF_TERM values[] = {
+    binary_term,
+    typestr_term,
+    shape_term
+  };
+
+  return enif_make_map_from_arrays(
+      env,
+      keys,
+      values,
+      3,
+      out_map
+  );
 }

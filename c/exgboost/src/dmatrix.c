@@ -1,4 +1,6 @@
 #include "dmatrix.h"
+#include "yyjson.h"
+#include <errno.h>
 #include <inttypes.h>
 #include <string.h>
 
@@ -953,86 +955,135 @@ static int exg_parse_and_copy_array_interface(
     const char *json_str,
     ERL_NIF_TERM *out_map
 ) {
-  // Parse the JSON to extract address, typestr, shape
-  // For now, we'll use a simple parser since the format is predictable:
-  // {"version":3,"typestr":"<u8","data":[address,true],"shape":[n]}
+  int ok = 0;
+  yyjson_doc *doc = NULL;
 
-  const char *data_start = strstr(json_str, "\"data\":[");
-  const char *shape_start = strstr(json_str, "\"shape\":[");
-  const char *typestr_start = strstr(json_str, "\"typestr\":\"");
-
-  if (!data_start || !shape_start || !typestr_start) {
-    return 0;
+  doc = yyjson_read(json_str, strlen(json_str), 0);
+  if (doc == NULL) {
+    goto CLEANUP;
   }
 
-  // Parse address from data array
-  uintptr_t address = 0;
-  if (sscanf(data_start, "\"data\":[%" SCNuPTR, &address) != 1) {
-    return 0;
+  yyjson_val *root = yyjson_doc_get_root(doc);
+  if (!yyjson_is_obj(root)) {
+    goto CLEANUP;
   }
 
-  // Parse typestr (e.g., "<u8" or "<f4")
-  char typestr[16] = {0};
-  if (sscanf(typestr_start, "\"typestr\":\"%15[^\"]\""  , typestr) != 1) {
-    return 0;
+  yyjson_val *version_val = yyjson_obj_get(root, "version");
+  yyjson_val *typestr_val = yyjson_obj_get(root, "typestr");
+  yyjson_val *data_arr = yyjson_obj_get(root, "data");
+  yyjson_val *shape_arr = yyjson_obj_get(root, "shape");
+
+  if (!yyjson_is_uint(version_val) ||
+      yyjson_get_uint(version_val) != 3 ||
+      !yyjson_is_str(typestr_val) ||
+      !yyjson_is_arr(data_arr) ||
+      !yyjson_is_arr(shape_arr)) {
+    goto CLEANUP;
   }
 
-  // Parse shape - for simplicity, handle single dimension [n]
-  size_t shape_len = 0;
-  if (sscanf(shape_start, "\"shape\":[%zu]"  , &shape_len) != 1) {
-    return 0;
+  if (yyjson_arr_size(data_arr) < 2) {
+    goto CLEANUP;
   }
 
-  // Calculate size from typestr and shape
-  // typestr format: <endian><type><bytes> e.g. "<u8" = 8 bytes, "<f4" = 4 bytes
+  yyjson_val *address_val = yyjson_arr_get(data_arr, 0);
+  yyjson_val *readonly_val = yyjson_arr_get(data_arr, 1);
+
+  if (!yyjson_is_uint(address_val) ||
+      !yyjson_is_bool(readonly_val)) {
+    goto CLEANUP;
+  }
+
+  uint64_t address_arg = yyjson_get_uint(address_val);
+
+  if (address_arg > UINTPTR_MAX) {
+    goto CLEANUP;
+  }
+
+  uintptr_t address = (uintptr_t)address_arg;
+  const char *typestr = yyjson_get_str(typestr_val);
+
   size_t bytes_per_elem = 0;
-  if (sscanf(typestr + 2, "%zu"  , &bytes_per_elem) != 1) {
-    return 0;
+  const char *parse_error = NULL;
+
+  if (!exg_parse_typestr(
+          typestr,
+          &bytes_per_elem,
+          &parse_error)) {
+    goto CLEANUP;
   }
 
-  // Check for overflow
-  if (shape_len > SIZE_MAX / bytes_per_elem) {
-    return 0;
-  }
-  size_t total_size = shape_len * bytes_per_elem;
+  size_t ndim = yyjson_arr_size(shape_arr);
 
-  // Copy data from XGBoost-owned address immediately using enif_make_new_binary
-  // This creates the binary term directly, so ownership transfers to BEAM immediately
+  /*
+   * Quantile-cut interfaces are expected to be one-dimensional.
+   * Relax this only if the helper becomes generic.
+   */
+  if (ndim != 1) {
+    goto CLEANUP;
+  }
+
+  yyjson_val *dim_val = yyjson_arr_get(shape_arr, 0);
+
+  if (!yyjson_is_uint(dim_val)) {
+    goto CLEANUP;
+  }
+
+  uint64_t dim_arg = yyjson_get_uint(dim_val);
+
+  if (dim_arg > SIZE_MAX) {
+    goto CLEANUP;
+  }
+
+  size_t dim = (size_t)dim_arg;
+
+  if (dim != 0 && bytes_per_elem > SIZE_MAX / dim) {
+    goto CLEANUP;
+  }
+
+  size_t total_size = dim * bytes_per_elem;
+
   if (address == 0 && total_size != 0) {
-    return 0;
+    goto CLEANUP;
   }
 
-  ERL_NIF_TERM data_binary_term;
-  unsigned char *data_dest = enif_make_new_binary(env, total_size, &data_binary_term);
-  if (data_dest == NULL && total_size != 0) {
-    return 0;
+  ERL_NIF_TERM binary_term;
+  unsigned char *destination =
+      enif_make_new_binary(env, total_size, &binary_term);
+
+  if (destination == NULL && total_size != 0) {
+    goto CLEANUP;
   }
+
   if (total_size != 0) {
-    memcpy(data_dest, (const void *)address, total_size);
+    memcpy(destination, (const void *)address, total_size);
   }
 
-  // Convert typestr to binary string using enif_make_new_binary
   size_t typestr_len = strlen(typestr);
-  ERL_NIF_TERM typestr_binary_term;
-  unsigned char *typestr_dest = enif_make_new_binary(env, typestr_len, &typestr_binary_term);
-  if (typestr_dest == NULL && typestr_len != 0) {
-    return 0;
+  ERL_NIF_TERM typestr_term;
+  unsigned char *typestr_destination =
+      enif_make_new_binary(env, typestr_len, &typestr_term);
+
+  if (typestr_destination == NULL && typestr_len != 0) {
+    goto CLEANUP;
   }
-  memcpy(typestr_dest, typestr, typestr_len);
 
-  // Build result map: %{binary: binary, typestr: string, shape: [n]}
-  ERL_NIF_TERM binary_key = enif_make_atom(env, "binary");
-  ERL_NIF_TERM typestr_key = enif_make_atom(env, "typestr");
-  ERL_NIF_TERM shape_key = enif_make_atom(env, "shape");
+  if (typestr_len != 0) {
+    memcpy(typestr_destination, typestr, typestr_len);
+  }
 
-  ERL_NIF_TERM keys[] = {binary_key, typestr_key, shape_key};
-  ERL_NIF_TERM values[] = {
-    data_binary_term,
-    typestr_binary_term,
-    enif_make_list1(env, enif_make_uint64(env, (ErlNifUInt64)shape_len))
-  };
+  ERL_NIF_TERM shape_term =
+      enif_make_list1(
+          env,
+          enif_make_uint64(env, (ErlNifUInt64)dim));
 
-  return enif_make_map_from_arrays(env, keys, values, 3, out_map);
+  ok = exg_make_array_interface_map(env, binary_term, typestr_term, shape_term, out_map);
+
+CLEANUP:
+  if (doc != NULL) {
+    yyjson_doc_free(doc);
+  }
+
+  return ok;
 }
 
 ERL_NIF_TERM EXGDMatrixGetQuantileCut(ErlNifEnv *env, int argc,

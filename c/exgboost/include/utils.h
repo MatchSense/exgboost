@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <xgboost/c_api.h>
+#include <stddef.h>
 
 ErlNifResourceType *DMatrix_RESOURCE_TYPE;
 ErlNifResourceType *Booster_RESOURCE_TYPE;
@@ -66,5 +67,16 @@ int exg_build_array_interface_json(ErlNifEnv *env, ERL_NIF_TERM binary_term,
                                     ERL_NIF_TERM typestr_term, ERL_NIF_TERM shape_term,
                                     ERL_NIF_TERM readonly_term, char **json_out,
                                     const char **error_msg);
+
+// Array Interface helper - builds map from components
+int exg_make_array_interface_map(
+    ErlNifEnv *env,
+    ERL_NIF_TERM binary_term,
+    ERL_NIF_TERM typestr_term,
+    ERL_NIF_TERM shape_term,
+    ERL_NIF_TERM *out_map
+);
+
+int exg_parse_typestr(const char *typestr, size_t *element_size_out, const char **error_msg);
 
 #endif
