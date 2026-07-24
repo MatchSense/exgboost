@@ -1,8 +1,8 @@
 #include "utils.h"
 #include <ctype.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <stdint.h>
-#include <stdlib.h>
 // Ensure bst_ulong and ErlNifUInt64 are both 64-bit for safe conversions
 _Static_assert(
     sizeof(bst_ulong) == sizeof(ErlNifUInt64),
@@ -230,38 +230,87 @@ static int exg_get_boolean(ErlNifEnv *env, ERL_NIF_TERM term, int *value) {
   return 0;
 }
 
-// Helper: Validate typestr format
+// Helper: Parse and validate typestr format, returning element size
 // Accepts patterns like: <f4, <f8, <i4, <i8, <u4, <u8, |i1, |u1, etc.
-static int exg_valid_typestr(const char *typestr) {
-  if (typestr == NULL || typestr[0] == '\0') {
+//
+// Validation policy:
+// - Endianness: Only '<' (little-endian) and '|' (byte-order-independent) are accepted.
+//   Big-endian '>' is rejected until byte-swapping is implemented.
+// - Type codes: 'i' (signed int), 'u' (unsigned int), 'f' (float), 'c' (complex)
+// - Element size: Any positive integer that fits in size_t is accepted syntactically.
+//   XGBoost will validate whether it supports the specific type/width combination.
+// - The '|' marker is only valid for single-byte types (width 1).
+static int exg_parse_typestr(
+    const char *typestr,
+    size_t *element_size_out,
+    const char **error_msg
+) {
+  if (typestr == NULL ||
+      typestr[0] == '\0' ||
+      typestr[1] == '\0' ||
+      typestr[2] == '\0') {
+    *error_msg = "Typestr must have the form '<f4', '<i8', or '|u1'";
     return 0;
   }
 
-  // First character: endianness marker (restrict to little-endian or non-endian)
-  if (typestr[0] != '<' && typestr[0] != '|') {
+  char endianness = typestr[0];
+  char type_code = typestr[1];
+  const char *size_text = typestr + 2;
+
+  // Only little-endian and byte-order-independent are supported
+  // Big-endian requires byte-swapping which is not yet implemented
+  if (endianness != '<' && endianness != '|') {
+    *error_msg =
+        "Typestr endianness must be '<' (little-endian) or '|' (byte-order-independent); "
+        "big-endian '>' is not supported";
     return 0;
   }
 
-  // Second character: type category
-  if (typestr[1] != 'i' && typestr[1] != 'u' && typestr[1] != 'f' && typestr[1] != 'c') {
+  if (type_code != 'i' &&
+      type_code != 'u' &&
+      type_code != 'f' &&
+      type_code != 'c') {
+    *error_msg =
+        "Typestr type must be 'i', 'u', 'f', or 'c'";
     return 0;
   }
 
-  // Remaining characters: must be digits
-  for (size_t i = 2; typestr[i] != '\0'; i++) {
-    if (!isdigit((unsigned char)typestr[i])) {
+  /*
+   * strtoumax() accepts whitespace and a leading '+', but these are not
+   * valid in a typestr. Require every remaining character to be a digit.
+   */
+  for (const char *cursor = size_text; *cursor != '\0'; ++cursor) {
+    if (!isdigit((unsigned char)*cursor)) {
+      *error_msg =
+          "Typestr element size must contain decimal digits only";
       return 0;
     }
   }
 
-  return 1;
-}
+  errno = 0;
+  char *end = NULL;
+  uintmax_t parsed = strtoumax(size_text, &end, 10);
 
-// Helper: Get bytes per element from typestr
-static size_t exg_bytes_per_element(const char *typestr) {
-  // Skip endianness and type character, parse the number
-  const char *num_str = typestr + 2;
-  return (size_t)atoi(num_str);
+  if (errno == ERANGE ||
+      end == size_text ||
+      *end != '\0' ||
+      parsed == 0 ||
+      parsed > SIZE_MAX) {
+    *error_msg = "Invalid typestr element size";
+    return 0;
+  }
+
+  size_t element_size = (size_t)parsed;
+
+  // The byte-order-independent marker '|' is only valid for single-byte types
+  if (endianness == '|' && element_size != 1) {
+    *error_msg =
+        "Byte-order-independent marker '|' is only valid for single-byte types";
+    return 0;
+  }
+
+  *element_size_out = element_size;
+  return 1;
 }
 
 // Helper: Build shape JSON string dynamically
@@ -343,16 +392,10 @@ static int exg_shape_to_json(ErlNifEnv *env, ERL_NIF_TERM shape_term,
 
 // Helper: Validate shape and check binary size
 static int exg_validate_shape_and_size(ErlNifEnv *env, ERL_NIF_TERM shape_term,
-                                       const char *typestr, size_t binary_size,
+                                       size_t element_size, size_t binary_size,
                                        size_t *required_bytes_out,
                                        const char **error_msg) {
   unsigned shape_len;
-  size_t element_size = exg_bytes_per_element(typestr);
-
-  if (element_size == 0) {
-    *error_msg = "Invalid typestr: element size is 0";
-    return 0;
-  }
 
   if (!enif_get_list_length(env, shape_term, &shape_len)) {
     *error_msg = "Shape must be a proper list";
@@ -432,9 +475,9 @@ int exg_build_array_interface_json(ErlNifEnv *env, ERL_NIF_TERM binary_term,
     goto CLEANUP;
   }
 
-  // Validate typestr format
-  if (!exg_valid_typestr(typestr)) {
-    *error_msg = "Unsupported typestr format";
+  // Parse and validate typestr format
+  size_t element_size = 0;
+  if (!exg_parse_typestr(typestr, &element_size, error_msg)) {
     goto CLEANUP;
   }
 
@@ -445,8 +488,8 @@ int exg_build_array_interface_json(ErlNifEnv *env, ERL_NIF_TERM binary_term,
   }
 
   // Validate shape dimensions and binary size
-  size_t required_bytes;
-  if (!exg_validate_shape_and_size(env, shape_term, typestr, data_bin.size,
+  size_t required_bytes = 0;
+  if (!exg_validate_shape_and_size(env, shape_term, element_size, data_bin.size,
                                     &required_bytes, error_msg)) {
     goto CLEANUP;
   }

@@ -436,10 +436,22 @@ defmodule EXGBoostTest do
     assert {:ok, {:f, 64}} = EXGBoost.ArrayInterface.parse_typestr("<f8")
     assert {:ok, {:c, 128}} = EXGBoost.ArrayInterface.parse_typestr("<c16")
     assert {:ok, {:s, 8}} = EXGBoost.ArrayInterface.parse_typestr("|i1")
+    assert {:ok, {:u, 8}} = EXGBoost.ArrayInterface.parse_typestr("|u1")
 
     # Bang version returns values directly
     assert {:s, 64} = EXGBoost.ArrayInterface.parse_typestr!("<i8")
     assert {:f, 32} = EXGBoost.ArrayInterface.parse_typestr!("<f4")
+
+    # Big-endian should be rejected
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr(">f4")
+    assert reason =~ ~r/(big-endian|unsupported)/i
+
+    # Byte-order-independent marker (|) only valid for single-byte types
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr("|i4")
+    assert reason =~ ~r/(byte-order-independent|multi-byte)/i
+
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr("|f8")
+    assert reason =~ ~r/(byte-order-independent|multi-byte)/i
 
     # Non-bang version returns errors
     assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr("<x4")

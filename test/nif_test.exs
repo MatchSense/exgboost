@@ -706,7 +706,9 @@ defmodule NifTest do
         )
 
       assert {:error, error_msg} = result
-      assert to_string(error_msg) =~ "typestr"
+      # Error message should mention typestr or element size validation
+      error_str = to_string(error_msg)
+      assert error_str =~ ~r/(typestr|Typestr|element size)/i
     end
 
     test "accepts a binary matching the declared shape and type" do
@@ -817,37 +819,66 @@ defmodule NifTest do
     end
 
     test "validates typestr with different endianness markers" do
-      binary = <<1.0::float-32-native, 2.0::float-32-native>>
+      # Little-endian with float (4 bytes)
+      binary_f4 = <<1.0::float-32-native, 2.0::float-32-native>>
 
       # Little-endian should work
       assert {:ok, _} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary,
+                 binary_f4,
                  "<f4",
                  [2],
                  true,
                  config()
                )
 
-      # Non-endian should work
+      # Non-endian (|) is only valid for single-byte types
+      binary_i1 = <<1, 2>>
+
       assert {:ok, _} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary,
+                 binary_i1,
+                 "|i1",
+                 [2],
+                 true,
+                 config()
+               )
+
+      # Non-endian with multi-byte type should fail
+      assert {:error, error_msg} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 binary_f4,
                  "|i4",
                  [2],
                  true,
                  config()
                )
 
+      assert to_string(error_msg) =~ "only valid for single-byte types"
+
       # Invalid endianness marker should fail
-      assert {:error, _} =
+      assert {:error, error_msg} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary,
+                 binary_f4,
                  "?f4",
                  [2],
                  true,
                  config()
                )
+
+      assert to_string(error_msg) =~ ~r/(endianness|Typestr)/
+
+      # Big-endian should be rejected (not supported until byte-swapping implemented)
+      assert {:error, error_msg} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 binary_f4,
+                 ">f4",
+                 [2],
+                 true,
+                 config()
+               )
+
+      assert to_string(error_msg) =~ ~r/(big-endian|not supported)/i
     end
 
     test "validates shape with overflow protection" do
