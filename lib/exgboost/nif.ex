@@ -22,6 +22,7 @@ defmodule EXGBoost.NIF do
   @type dmatrix_reference :: reference()
   @type booster_reference :: reference()
   @type exgboost_return_type(return_type) :: {:ok, return_type} | {:error, String.t()}
+  @type feature_score_result :: {[String.t()], tuple(), [float()]}
 
   def on_load do
     path = :filename.join([:code.priv_dir(:exgboost), "libexgboost"])
@@ -328,13 +329,13 @@ defmodule EXGBoost.NIF do
     do: :erlang.nif_error(:not_implemented)
 
   @spec booster_feature_score(booster_reference(), String.t()) ::
-          exgboost_return_type(tuple())
+          exgboost_return_type(feature_score_result())
   def booster_feature_score(_booster_resource, _config),
     do: :erlang.nif_error(:not_implemented)
 
   @spec booster_predict_from_dmatrix(booster_reference(), dmatrix_reference(), String.t()) ::
           tuple()
-  def booster_predict_from_dmatrix(_boster, _dmatrix, _config),
+  def booster_predict_from_dmatrix(_booster, _dmatrix, _config),
     do: :erlang.nif_error(:not_implemented)
 
   @spec booster_predict_from_dense(

@@ -448,6 +448,81 @@ defmodule NifTest do
     assert EXGBoost.NIF.booster_feature_score(booster, config) |> unwrap!() != :error
   end
 
+  test "booster_feature_score returns feature names, shape, and flattened scores" do
+    x =
+      Nx.tensor(
+        [
+          [0.0, 0.0, 0.0],
+          [0.0, 1.0, 1.0],
+          [0.0, 2.0, 0.0],
+          [0.0, 3.0, 1.0],
+          [1.0, 0.0, 1.0],
+          [1.0, 1.0, 0.0],
+          [1.0, 2.0, 1.0],
+          [1.0, 3.0, 0.0]
+        ],
+        type: {:f, 32}
+      )
+
+    y =
+      Nx.tensor(
+        [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0],
+        type: {:f, 32}
+      )
+
+    booster =
+      EXGBoost.train(
+        x,
+        y,
+        objective: :reg_squarederror,
+        tree_method: :hist,
+        num_boost_rounds: 5,
+        max_depth: 2,
+        seed: 0,
+        verbose_eval: false
+      )
+
+    assert {:ok, {feature_names, shape, scores}} =
+             EXGBoost.NIF.booster_feature_score(
+               booster.ref,
+               Jason.encode!(%{importance_type: "weight"})
+             )
+
+    assert is_list(feature_names)
+    assert is_tuple(shape)
+    assert is_list(scores)
+
+    # This dataset should always produce at least one split.
+    assert feature_names != []
+    assert scores != []
+
+    # The first shape dimension corresponds to the number of returned
+    # feature names.
+    assert tuple_size(shape) >= 1
+    assert elem(shape, 0) == length(feature_names)
+
+    # Scores are returned flattened, so their count must equal the
+    # product of all dimensions in the returned shape.
+    expected_score_count =
+      shape
+      |> Tuple.to_list()
+      |> Enum.product()
+
+    assert length(scores) == expected_score_count
+
+    # enif_make_string/3 currently returns feature names as charlists.
+    assert Enum.all?(feature_names, fn name ->
+             is_list(name) and List.ascii_printable?(name)
+           end)
+
+    assert Enum.all?(scores, &is_float/1)
+    assert Enum.all?(scores, &(&1 >= 0.0))
+
+    # Labels depend entirely on the first input column, so f0 should
+    # have been selected by the model.
+    assert "f0" in Enum.map(feature_names, &to_string/1)
+  end
+
   test "save model" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)

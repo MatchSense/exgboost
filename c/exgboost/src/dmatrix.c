@@ -368,46 +368,86 @@ ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc,
   char *field = NULL;
   int result = -1;
   ERL_NIF_TERM ret = 0;
+  ERL_NIF_TERM *arr = NULL;
+
   if (argc != 2) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
+
   if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
                          (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
+
   if (!exg_get_string(env, argv[1], &field)) {
     ret = exg_error(env, "Field must be a string");
     goto END;
   }
+
   if (strcmp(field, "feature_type") != 0 &&
       strcmp(field, "feature_name") != 0) {
     ret = exg_error(env, "Field must be in ['feature_type', 'feature_name']");
     goto END;
   }
+
   handle = *resource;
-  result =
-      XGDMatrixGetStrFeatureInfo(handle, field, &out_size, &c_out_features);
+  result = XGDMatrixGetStrFeatureInfo(handle, field, &out_size, &c_out_features);
+
   if (result == 0) {
-    // Check VLA size fits in size_t
-    if (out_size > SIZE_MAX / sizeof(ERL_NIF_TERM)) {
+    if (out_size > UINT_MAX ||
+        out_size > SIZE_MAX / sizeof(*arr)) {
       ret = exg_error(env, "Result is too large");
       goto END;
     }
-    ERL_NIF_TERM arr[out_size];
-    for (bst_ulong i = 0; i < out_size; ++i) {
-      // enif_make_string materializes a BEAM term; no temporary C copy needed.
-      arr[i] = enif_make_string(env, c_out_features[i], ERL_NIF_LATIN1);
+
+    if (out_size != 0) {
+      arr = enif_alloc((size_t)out_size * sizeof(*arr));
+
+      if (arr == NULL) {
+        ret = exg_error(env, "Failed to allocate result");
+        goto END;
+      }
+
+      for (bst_ulong i = 0; i < out_size; ++i) {
+        if (c_out_features[i] == NULL) {
+          ret = exg_error(env, "XGBoost returned a NULL feature");
+          goto END;
+        }
+
+        arr[i] =
+            enif_make_string(
+                env,
+                c_out_features[i],
+                ERL_NIF_LATIN1
+            );
+      }
     }
-    ret = exg_ok(env, enif_make_list_from_array(env, arr, (size_t)out_size));
+
+    ERL_NIF_TERM list =
+        out_size == 0
+            ? enif_make_list(env, 0)
+            : enif_make_list_from_array(
+                  env,
+                  arr,
+                  (unsigned)out_size
+              );
+
+    ret = exg_ok(env, list);
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
+
 END:
+  if (arr != NULL) {
+    enif_free(arr);
+  }
+
   if (field != NULL) {
     enif_free(field);
   }
+
   return ret;
 }
 
