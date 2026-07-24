@@ -187,7 +187,7 @@ ERL_NIF_TERM EXGBoosterGetNumFeature(ErlNifEnv *env, int argc,
   booster = *resource;
   result = XGBoosterGetNumFeature(booster, &num_feature);
   if (result == 0) {
-    ret = exg_ok(env, enif_make_ulong(env, num_feature));
+    ret = exg_ok(env, enif_make_uint64(env, (ErlNifUInt64)num_feature));
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
@@ -464,7 +464,7 @@ ERL_NIF_TERM EXGBoosterGetAttrNames(ErlNifEnv *env, int argc,
     for (bst_ulong i = 0; i < out_len; ++i) {
       arr[i] = enif_make_string(env, out[i], ERL_NIF_LATIN1);
     }
-    ret = exg_ok(env, enif_make_list_from_array(env, arr, out_len));
+    ret = exg_ok(env, enif_make_list_from_array(env, arr, (size_t)out_len));
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
@@ -556,7 +556,7 @@ ERL_NIF_TERM EXGBoosterGetStrFeatureInfo(ErlNifEnv *env, int argc,
       // enif_make_string materializes a BEAM term; no temporary C copy needed.
       arr[i] = enif_make_string(env, c_out_features[i], ERL_NIF_LATIN1);
     }
-    ret = exg_ok(env, enif_make_list_from_array(env, arr, out_size));
+    ret = exg_ok(env, enif_make_list_from_array(env, arr, (size_t)out_size));
   } else {
     ret = exg_error(env, XGBGetLastError());
   }

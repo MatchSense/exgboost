@@ -2,6 +2,8 @@
 #define EXGBOOST_UTILS_H
 
 #include <erl_nif.h>
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <xgboost/c_api.h>

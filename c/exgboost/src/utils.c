@@ -1,4 +1,13 @@
 #include "utils.h"
+#include <ctype.h>
+#include <inttypes.h>
+#include <stdint.h>
+
+// Ensure bst_ulong and ErlNifUInt64 are both 64-bit for safe conversions
+_Static_assert(
+    sizeof(bst_ulong) == sizeof(ErlNifUInt64),
+    "bst_ulong and ErlNifUInt64 must both be 64-bit"
+);
 
 // Atoms
 ERL_NIF_TERM exg_error(ErlNifEnv *env, const char *msg) {

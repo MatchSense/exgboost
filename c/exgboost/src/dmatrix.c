@@ -1,4 +1,6 @@
 #include "dmatrix.h"
+#include <inttypes.h>
+#include <string.h>
 
 static ERL_NIF_TERM make_DMatrix_resource(ErlNifEnv *env,
                                           DMatrixHandle handle) {
@@ -334,7 +336,7 @@ ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc,
       // enif_make_string materializes a BEAM term; no temporary C copy needed.
       arr[i] = enif_make_string(env, c_out_features[i], ERL_NIF_LATIN1);
     }
-    ret = exg_ok(env, enif_make_list_from_array(env, arr, out_size));
+    ret = exg_ok(env, enif_make_list_from_array(env, arr, (size_t)out_size));
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
@@ -372,10 +374,12 @@ ERL_NIF_TERM EXGDMatrixSetDenseInfo(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Data must be a binary");
     goto END;
   }
-  if (!enif_get_ulong(env, argv[3], &size)) {
-    ret = exg_error(env, "Size must be an integer");
+  ErlNifUInt64 size_arg;
+  if (!enif_get_uint64(env, argv[3], &size_arg)) {
+    ret = exg_error(env, "Size must be a non-negative integer");
     goto END;
   }
+  size = (bst_ulong)size_arg;
   if (!enif_get_int(env, argv[4], &type)) {
     ret = exg_error(env, "Type must be an integer");
     goto END;
@@ -427,7 +431,7 @@ ERL_NIF_TERM EXGDMatrixNumRow(ErlNifEnv *env, int argc,
   handle = *resource;
   result = XGDMatrixNumRow(handle, &out);
   if (result == 0) {
-    ret = exg_ok(env, enif_make_ulong(env, out));
+    ret = exg_ok(env, enif_make_uint64(env, (ErlNifUInt64)out));
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
@@ -454,7 +458,7 @@ ERL_NIF_TERM EXGDMatrixNumCol(ErlNifEnv *env, int argc,
   handle = *resource;
   result = XGDMatrixNumCol(handle, &out);
   if (result == 0) {
-    ret = exg_ok(env, enif_make_ulong(env, out));
+    ret = exg_ok(env, enif_make_uint64(env, (ErlNifUInt64)out));
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
@@ -481,7 +485,7 @@ ERL_NIF_TERM EXGDMatrixNumNonMissing(ErlNifEnv *env, int argc,
   handle = *resource;
   result = XGDMatrixNumNonMissing(handle, &out);
   if (result == 0) {
-    ret = exg_ok(env, enif_make_ulong(env, out));
+    ret = exg_ok(env, enif_make_uint64(env, (ErlNifUInt64)out));
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
@@ -740,22 +744,25 @@ ERL_NIF_TERM EXGDMatrixGetDataAsCSR(ErlNifEnv *env, int argc,
   indptr = enif_alloc(sizeof(ERL_NIF_TERM) * (num_rows + 1));
   indices = enif_alloc(sizeof(ERL_NIF_TERM) * num_non_missing);
   data = enif_alloc(sizeof(ERL_NIF_TERM) * num_non_missing);
+  indptr = enif_alloc(sizeof(ERL_NIF_TERM) * (size_t)(num_rows + 1));
+  indices = enif_alloc(sizeof(ERL_NIF_TERM) * (size_t)num_non_missing);
+  data = enif_alloc(sizeof(ERL_NIF_TERM) * (size_t)num_non_missing);
   if (!indptr || !indices || !data) {
     ret = exg_error(env, "Failed to allocate memory");
     goto END;
   }
-  for (int i = 0; i < num_rows + 1; i++) {
-    indptr[i] = enif_make_ulong(env, out_indptr[i]);
+  for (bst_ulong i = 0; i < num_rows + 1; ++i) {
+    indptr[i] = enif_make_uint64(env, (ErlNifUInt64)out_indptr[i]);
   }
-  for (int i = 0; i < num_non_missing; i++) {
+  for (bst_ulong i = 0; i < num_non_missing; ++i) {
     indices[i] = enif_make_uint(env, out_indices[i]);
     data[i] = enif_make_double(env, out_data[i]);
   }
   ret =
       exg_ok(env, enif_make_tuple3(
-                      env, enif_make_list_from_array(env, indptr, num_rows + 1),
-                      enif_make_list_from_array(env, indices, num_non_missing),
-                      enif_make_list_from_array(env, data, num_non_missing)));
+                      env, enif_make_list_from_array(env, indptr, (size_t)(num_rows + 1)),
+                      enif_make_list_from_array(env, indices, (size_t)num_non_missing),
+                      enif_make_list_from_array(env, data, (size_t)num_non_missing)));
 END:
   // Mixed allocators: enif_free for enif_alloc buffers, free for malloc buffers.
   if (config != NULL) {
@@ -876,8 +883,7 @@ ERL_NIF_TERM EXGDMatrixGetQuantileCut(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
