@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Single cleanup path: Refactored to use consistent resource management with single cleanup labels to prevent memory leaks
   - Atomic data copying: All data returned from XGBoost is now copied atomically within NIF calls, eliminating pointer lifetime issues
   - Added static assertions and overflow checks for VLA (Variable Length Array) declarations
+  - **Memory management improvements**: Refactored all binary copying to use `enif_make_new_binary()` instead of `enif_alloc_binary()` + `enif_make_binary()` for cleaner ownership semantics and automatic memory leak prevention (no manual cleanup required)
 
 - **ArrayInterface Optimization**:
   - Removed `address` field - pointer addresses are never exposed to Elixir for safety

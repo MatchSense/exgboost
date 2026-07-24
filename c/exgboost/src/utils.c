@@ -185,28 +185,33 @@ END:
 // Unsafe, to be deprecated in future releases.
 ERL_NIF_TERM exg_get_binary_from_address(ErlNifEnv *env, int argc,
                                          const ERL_NIF_TERM argv[]) {
-  ErlNifBinary out_bin;
   ErlNifUInt64 address = 0;
   ErlNifUInt64 size = 0;
   ERL_NIF_TERM ret = -1;
   if (argc != 2) {
-    ret = exg_error(env, "exg_get_binary_address: wrong number of arguments");
+    ret = exg_error(env, "exg_get_binary_from_address: wrong number of arguments");
     goto END;
   }
   if (!enif_get_uint64(env, argv[0], &address)) {
-    ret = exg_error(env, "exg_get_binary_address: invalid address");
+    ret = exg_error(env, "exg_get_binary_from_address: invalid address");
     goto END;
   }
   if (!enif_get_uint64(env, argv[1], &size)) {
-    ret = exg_error(env, "exg_get_binary_address: invalid size");
+    ret = exg_error(env, "exg_get_binary_from_address: invalid size");
     goto END;
   }
-  if (!enif_alloc_binary(size, &out_bin)) {
+  
+  // Use enif_make_new_binary for cleaner memory management
+  ERL_NIF_TERM binary_term;
+  unsigned char *dest = enif_make_new_binary(env, size, &binary_term);
+  if (dest == NULL && size != 0) {
     ret = exg_error(env, "Failed to allocate binary");
     goto END;
   }
-  memcpy(out_bin.data, (const void *)address, size);
-  ret = exg_ok(env, enif_make_binary(env, &out_bin));
+  if (size > 0) {
+    memcpy(dest, (const void *)address, size);
+  }
+  ret = exg_ok(env, binary_term);
 END:
   return ret;
 }

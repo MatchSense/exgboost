@@ -953,35 +953,39 @@ static int exg_parse_and_copy_array_interface(
   }
   size_t total_size = shape_len * bytes_per_elem;
 
-  // Copy data from XGBoost-owned address immediately
-  ErlNifBinary data_bin;
+  // Copy data from XGBoost-owned address immediately using enif_make_new_binary
+  // This creates the binary term directly, so ownership transfers to BEAM immediately
   if (address == 0 && total_size != 0) {
     return 0;
   }
-  if (!enif_alloc_binary(total_size, &data_bin)) {
+
+  ERL_NIF_TERM data_binary_term;
+  unsigned char *data_dest = enif_make_new_binary(env, total_size, &data_binary_term);
+  if (data_dest == NULL && total_size != 0) {
     return 0;
   }
   if (total_size != 0) {
-    memcpy(data_bin.data, (const void *)address, total_size);
+    memcpy(data_dest, (const void *)address, total_size);
   }
+
+  // Convert typestr to binary string using enif_make_new_binary
+  size_t typestr_len = strlen(typestr);
+  ERL_NIF_TERM typestr_binary_term;
+  unsigned char *typestr_dest = enif_make_new_binary(env, typestr_len, &typestr_binary_term);
+  if (typestr_dest == NULL && typestr_len != 0) {
+    return 0;
+  }
+  memcpy(typestr_dest, typestr, typestr_len);
 
   // Build result map: %{binary: binary, typestr: string, shape: [n]}
   ERL_NIF_TERM binary_key = enif_make_atom(env, "binary");
   ERL_NIF_TERM typestr_key = enif_make_atom(env, "typestr");
   ERL_NIF_TERM shape_key = enif_make_atom(env, "shape");
 
-  // Convert typestr to binary string
-  size_t typestr_len = strlen(typestr);
-  ErlNifBinary typestr_bin;
-  if (!enif_alloc_binary(typestr_len, &typestr_bin)) {
-    return 0;
-  }
-  memcpy(typestr_bin.data, typestr, typestr_len);
-
   ERL_NIF_TERM keys[] = {binary_key, typestr_key, shape_key};
   ERL_NIF_TERM values[] = {
-    enif_make_binary(env, &data_bin),
-    enif_make_binary(env, &typestr_bin),
+    data_binary_term,
+    typestr_binary_term,
     enif_make_list1(env, enif_make_uint64(env, (ErlNifUInt64)shape_len))
   };
 

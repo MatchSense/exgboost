@@ -934,7 +934,6 @@ ERL_NIF_TERM EXGBoosterSerializeToBuffer(ErlNifEnv *env, int argc,
   const char *out_buf = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
-  ErlNifBinary out_bin;
   if (1 != argc) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
@@ -950,12 +949,18 @@ ERL_NIF_TERM EXGBoosterSerializeToBuffer(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
     goto END;
   }
-  if (!enif_alloc_binary(out_len, &out_bin)) {
+  
+  // Use enif_make_new_binary for cleaner memory management
+  ERL_NIF_TERM binary_term;
+  unsigned char *dest = enif_make_new_binary(env, out_len, &binary_term);
+  if (dest == NULL && out_len != 0) {
     ret = exg_error(env, "Failed to allocate binary");
     goto END;
   }
-  memcpy(out_bin.data, out_buf, out_len);
-  ret = exg_ok(env, enif_make_binary(env, &out_bin));
+  if (out_len > 0) {
+    memcpy(dest, out_buf, out_len);
+  }
+  ret = exg_ok(env, binary_term);
 END:
   return ret;
 }
@@ -1041,7 +1046,6 @@ ERL_NIF_TERM EXGBoosterSaveModelToBuffer(ErlNifEnv *env, int argc,
   char *config = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
-  ErlNifBinary out_bin;
   if (2 != argc) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
@@ -1062,12 +1066,18 @@ ERL_NIF_TERM EXGBoosterSaveModelToBuffer(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
     goto END;
   }
-  if (!enif_alloc_binary(out_len, &out_bin)) {
+  
+  // Use enif_make_new_binary for cleaner memory management
+  ERL_NIF_TERM binary_term;
+  unsigned char *dest = enif_make_new_binary(env, out_len, &binary_term);
+  if (dest == NULL && out_len != 0) {
     ret = exg_error(env, "Failed to allocate binary");
     goto END;
   }
-  memcpy(out_bin.data, out_buf, out_len);
-  ret = exg_ok(env, enif_make_binary(env, &out_bin));
+  if (out_len > 0) {
+    memcpy(dest, out_buf, out_len);
+  }
+  ret = exg_ok(env, binary_term);
 END:
   if (config != NULL) {
     enif_free(config);
@@ -1083,7 +1093,6 @@ ERL_NIF_TERM EXGBoosterSaveJsonConfig(ErlNifEnv *env, int argc,
   const char *out_buf = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
-  ErlNifBinary out_bin;
   if (1 != argc) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
@@ -1099,12 +1108,18 @@ ERL_NIF_TERM EXGBoosterSaveJsonConfig(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
     goto END;
   }
-  if (!enif_alloc_binary(out_len, &out_bin)) {
+  
+  // Use enif_make_new_binary for cleaner memory management
+  ERL_NIF_TERM binary_term;
+  unsigned char *dest = enif_make_new_binary(env, out_len, &binary_term);
+  if (dest == NULL && out_len != 0) {
     ret = exg_error(env, "Failed to allocate binary");
     goto END;
   }
-  memcpy(out_bin.data, out_buf, out_len);
-  ret = exg_ok(env, enif_make_binary(env, &out_bin));
+  if (out_len > 0) {
+    memcpy(dest, out_buf, out_len);
+  }
+  ret = exg_ok(env, binary_term);
 END:
   return ret;
 }
