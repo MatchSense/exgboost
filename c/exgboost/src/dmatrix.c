@@ -147,7 +147,7 @@ ERL_NIF_TERM EXGDMatrixCreateFromSparse(ErlNifEnv *env, int argc,
   ERL_NIF_TERM indptr_binary, indptr_typestr, indptr_shape, indptr_readonly;
   ERL_NIF_TERM indices_binary, indices_typestr, indices_shape, indices_readonly;
   ERL_NIF_TERM data_binary, data_typestr, data_shape, data_readonly;
-  int n = 0;
+  bst_ulong n = 0;
   char *config = NULL;
   char *format = NULL;
   DMatrixHandle handle;
@@ -196,10 +196,20 @@ ERL_NIF_TERM EXGDMatrixCreateFromSparse(ErlNifEnv *env, int argc,
     goto END;
   }
 
-  if (!enif_get_int(env, argv[3], &n)) {
-    ret = exg_error(env, "Ncol must be an integer");
+  // Matrix dimension parsing, must be a positive integer.
+  ErlNifUInt64 n_arg = 0;
+
+  if (!enif_get_uint64(env, argv[3], &n_arg)) {
+    ret = exg_error(env, "Matrix dimension must be a non-negative integer");
     goto END;
   }
+
+  if (n_arg == 0) {
+    ret = exg_error(env, "Matrix dimension must be greater than zero");
+    goto END;
+  }
+
+  n = (bst_ulong)n_arg;
 
   if (!exg_get_string(env, argv[4], &config)) {
     ret = exg_error(env, "Config must be a string");

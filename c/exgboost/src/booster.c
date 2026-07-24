@@ -1,4 +1,5 @@
 #include "booster.h"
+#include <limits.h>
 
 static ERL_NIF_TERM make_Booster_resource(ErlNifEnv *env,
                                           BoosterHandle handle) {
@@ -446,34 +447,65 @@ ERL_NIF_TERM EXGBoosterGetAttrNames(ErlNifEnv *env, int argc,
   BoosterHandle **booster_resource = NULL;
   const char **out = NULL;
   bst_ulong out_len = 0;
+  ERL_NIF_TERM *arr = NULL;
   ERL_NIF_TERM ret = -1;
   int result = -1;
   if (1 != argc) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
+
   if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
                          (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
+
   booster = *booster_resource;
   result = XGBoosterGetAttrNames(booster, &out_len, &out);
   if (result == 0) {
-    // Check VLA size fits in size_t
-    if (out_len > SIZE_MAX / sizeof(ERL_NIF_TERM)) {
+    if (out_len > UINT_MAX || out_len > SIZE_MAX / sizeof(*arr)) {
       ret = exg_error(env, "Result is too large");
       goto END;
     }
-    ERL_NIF_TERM arr[out_len];
-    for (bst_ulong i = 0; i < out_len; ++i) {
-      arr[i] = enif_make_string(env, out[i], ERL_NIF_LATIN1);
+
+    if (out_len != 0) {
+      arr = enif_alloc((size_t)out_len * sizeof(*arr));
+
+      if (arr == NULL) {
+        ret = exg_error(env, "Failed to allocate result");
+        goto END;
+      }
+
+      for (bst_ulong i = 0; i < out_len; ++i) {
+        arr[i] =
+            enif_make_string(
+                env,
+                out[i],
+                ERL_NIF_LATIN1
+            );
+      }
     }
-    ret = exg_ok(env, enif_make_list_from_array(env, arr, (size_t)out_len));
+
+    ERL_NIF_TERM list =
+        out_len == 0
+            ? enif_make_list(env, 0)
+            : enif_make_list_from_array(
+                  env,
+                  arr,
+                  (unsigned)out_len
+              );
+
+    ret = exg_ok(env, list);
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
+
 END:
+  if (arr != NULL) {
+    enif_free(arr);
+  }
+
   return ret;
 }
 
@@ -530,43 +562,72 @@ ERL_NIF_TERM EXGBoosterGetStrFeatureInfo(ErlNifEnv *env, int argc,
   BoosterHandle handle;
   BoosterHandle **resource = NULL;
   char const **c_out_features = NULL;
-  bst_ulong out_size = 0;
+  bst_ulong out_len = 0;
   char *field = NULL;
   int result = -1;
   ERL_NIF_TERM ret = 0;
+  ERL_NIF_TERM *arr = NULL;
+
   if (argc != 2) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
+
   if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
                          (void *)&resource)) {
     ret = exg_error(env, "Booster must be a resource");
     goto END;
   }
+
   if (!exg_get_string(env, argv[1], &field)) {
     ret = exg_error(env, "Field must be a string");
     goto END;
   }
+
   if (strcmp(field, "feature_type") != 0 &&
       strcmp(field, "feature_name") != 0) {
     ret = exg_error(env, "Field must be in ['feature_type', 'feature_name']");
     goto END;
   }
+
   handle = *resource;
-  result =
-      XGBoosterGetStrFeatureInfo(handle, field, &out_size, &c_out_features);
+  result = XGBoosterGetStrFeatureInfo(handle, field, &out_len, &c_out_features);
+
   if (result == 0) {
-    // Check VLA size fits in size_t
-    if (out_size > SIZE_MAX / sizeof(ERL_NIF_TERM)) {
+    if (out_len > UINT_MAX ||
+      out_len > SIZE_MAX / sizeof(*arr)) {
       ret = exg_error(env, "Result is too large");
       goto END;
     }
-    ERL_NIF_TERM arr[out_size];
-    for (bst_ulong i = 0; i < out_size; ++i) {
-      // enif_make_string materializes a BEAM term; no temporary C copy needed.
-      arr[i] = enif_make_string(env, c_out_features[i], ERL_NIF_LATIN1);
+
+    if (out_len != 0) {
+      arr = enif_alloc((size_t)out_len * sizeof(*arr));
+
+      if (arr == NULL) {
+        ret = exg_error(env, "Failed to allocate result");
+        goto END;
+      }
+
+      for (bst_ulong i = 0; i < out_len; ++i) {
+        arr[i] =
+            enif_make_string(
+                env,
+                c_out_features[i],
+                ERL_NIF_LATIN1
+            );
+      }
     }
-    ret = exg_ok(env, enif_make_list_from_array(env, arr, (size_t)out_size));
+
+    ERL_NIF_TERM list =
+        out_len == 0
+            ? enif_make_list(env, 0)
+            : enif_make_list_from_array(
+                  env,
+                  arr,
+                  (unsigned)out_len
+              );
+
+    ret = exg_ok(env, list);
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
@@ -574,89 +635,402 @@ END:
   if (field != NULL) {
     enif_free(field);
   }
+  if (arr != NULL) {
+    enif_free(arr);
+  }
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterFeatureScore(ErlNifEnv *env, int argc,
-                                    const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterFeatureScore(
+    ErlNifEnv *env,
+    int argc,
+    const ERL_NIF_TERM argv[]
+) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   char *config = NULL;
+
   bst_ulong out_n_features = 0;
   const char **out_features = NULL;
   bst_ulong out_dim = 0;
   const bst_ulong *out_shape = NULL;
   const float *out_scores = NULL;
-  ERL_NIF_TERM ret = -1;
+
+  ERL_NIF_TERM *feature_terms = NULL;
+  ERL_NIF_TERM *shape_terms = NULL;
+  ERL_NIF_TERM *score_terms = NULL;
+
+  ERL_NIF_TERM ret = 0;
   int result = -1;
-  if (2 != argc) {
+
+  if (argc != 2) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+
+  if (!enif_get_resource(
+          env,
+          argv[0],
+          Booster_RESOURCE_TYPE,
+          (void **)&booster_resource)) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
+
   if (!exg_get_string(env, argv[1], &config)) {
-    ret = exg_error(env, "Config must be a list");
+    ret = exg_error(env, "Config must be a JSON-encoded string");
     goto END;
   }
+
   booster = *booster_resource;
+
   result =
-      XGBoosterFeatureScore(booster, config, &out_n_features, &out_features,
-                            &out_dim, &out_shape, &out_scores);
-  if (result == 0) {
-    // Check VLA sizes fit in size_t
-    if (out_n_features > SIZE_MAX / sizeof(ERL_NIF_TERM) ||
-        out_dim > SIZE_MAX / sizeof(ERL_NIF_TERM)) {
-      ret = exg_error(env, "Result is too large");
+      XGBoosterFeatureScore(
+          booster,
+          config,
+          &out_n_features,
+          &out_features,
+          &out_dim,
+          &out_shape,
+          &out_scores
+      );
+
+  if (result != 0) {
+    ret = exg_error(env, XGBGetLastError());
+    goto END;
+  }
+
+  /*
+   * XGBoost returns:
+   *
+   *   out_features: out_n_features strings
+   *   out_shape:    out_dim dimensions
+   *   out_scores:   product(out_shape) floats
+   */
+
+  if (out_dim == 0) {
+    ret = exg_error(env, "XGBoost returned an empty feature-score shape");
+    goto END;
+  }
+
+  if (out_shape == NULL) {
+    ret = exg_error(env, "XGBoost returned a NULL feature-score shape");
+    goto END;
+  }
+
+  if (out_n_features != 0 && out_features == NULL) {
+    ret = exg_error(env, "XGBoost returned NULL feature names");
+    goto END;
+  }
+
+  /*
+   * These Erlang NIF APIs take unsigned lengths.
+   */
+  if (out_n_features > UINT_MAX) {
+    ret = exg_error(env, "Too many feature names");
+    goto END;
+  }
+
+  if (out_dim > UINT_MAX) {
+    ret = exg_error(env, "Feature-score rank is too large");
+    goto END;
+  }
+
+  /*
+   * For XGBoosterFeatureScore, the first score dimension represents
+   * the features listed in out_features.
+   */
+  if (out_shape[0] != out_n_features) {
+    ret = exg_error(env, "Feature-score shape does not match feature-name count");
+    goto END;
+  }
+
+  /*
+   * Calculate the flattened score count with overflow protection.
+   */
+  size_t score_count = 1;
+
+  for (bst_ulong i = 0; i < out_dim; ++i) {
+    bst_ulong dim_arg = out_shape[i];
+
+    if (dim_arg > SIZE_MAX) {
+      ret = exg_error(env, "Feature-score dimension is too large");
       goto END;
     }
-    ERL_NIF_TERM feature_arr[out_n_features];
-    for (bst_ulong i = 0; i < out_n_features; ++i) {
-      ERL_NIF_TERM shape_arr[out_dim];
-      for (bst_ulong j = 0; j < out_dim; ++j) {
-        shape_arr[j] = enif_make_int(env, out_shape[i * out_dim + j]);
-      }
-      ERL_NIF_TERM shape = enif_make_list_from_array(env, shape_arr, out_dim);
-      ERL_NIF_TERM scores = enif_make_double(env, out_scores[i]);
-      ERL_NIF_TERM feature =
-          enif_make_string(env, out_features[i], ERL_NIF_LATIN1);
-      ERL_NIF_TERM tuple[3] = {feature, shape, scores};
-      feature_arr[i] = enif_make_tuple_from_array(env, tuple, 3);
+
+    size_t dim = (size_t)dim_arg;
+
+    if (dim != 0 && score_count > SIZE_MAX / dim) {
+      ret = exg_error(env, "Feature-score shape overflows");
+      goto END;
     }
-    ret = exg_ok(env,
-                 enif_make_list_from_array(env, feature_arr, out_n_features));
-  } else {
-    ret = exg_error(env, XGBGetLastError());
+
+    score_count *= dim;
   }
+
+  if (score_count > UINT_MAX) {
+    ret = exg_error(env, "Too many feature scores");
+    goto END;
+  }
+
+  if (score_count != 0 && out_scores == NULL) {
+    ret = exg_error(env, "XGBoost returned NULL feature scores");
+    goto END;
+  }
+
+  /*
+   * Allocate feature-name terms on the heap instead of using a VLA.
+   */
+  if (out_n_features != 0) {
+    if (out_n_features > SIZE_MAX / sizeof(*feature_terms)) {
+      ret = exg_error(env, "Feature-name allocation overflows");
+      goto END;
+    }
+
+    feature_terms =
+        enif_alloc(
+            (size_t)out_n_features * sizeof(*feature_terms)
+        );
+
+    if (feature_terms == NULL) {
+      ret = exg_error(env, "Failed to allocate feature names");
+      goto END;
+    }
+
+    for (bst_ulong i = 0; i < out_n_features; ++i) {
+      if (out_features[i] == NULL) {
+        ret = exg_error(env, "XGBoost returned a NULL feature name");
+        goto END;
+      }
+
+      feature_terms[i] =
+          enif_make_string(
+              env,
+              out_features[i],
+              ERL_NIF_LATIN1
+          );
+    }
+  }
+
+  /*
+   * Copy the shape into BEAM terms.
+   */
+  if (out_dim > SIZE_MAX / sizeof(*shape_terms)) {
+    ret = exg_error(env, "Feature-score shape allocation overflows");
+    goto END;
+  }
+
+  shape_terms =
+      enif_alloc((size_t)out_dim * sizeof(*shape_terms));
+
+  if (shape_terms == NULL) {
+    ret = exg_error(env, "Failed to allocate feature-score shape");
+    goto END;
+  }
+
+  for (bst_ulong i = 0; i < out_dim; ++i) {
+    shape_terms[i] =
+        enif_make_uint64(
+            env,
+            (ErlNifUInt64)out_shape[i]
+        );
+  }
+
+  /*
+   * Copy all scores into BEAM terms.
+   */
+  if (score_count != 0) {
+    if (score_count > SIZE_MAX / sizeof(*score_terms)) {
+      ret = exg_error(env, "Feature-score allocation overflows");
+      goto END;
+    }
+
+    score_terms =
+        enif_alloc(score_count * sizeof(*score_terms));
+
+    if (score_terms == NULL) {
+      ret = exg_error(env, "Failed to allocate feature scores");
+      goto END;
+    }
+
+    for (size_t i = 0; i < score_count; ++i) {
+      score_terms[i] =
+          enif_make_double(env, out_scores[i]);
+    }
+  }
+
+  ERL_NIF_TERM features =
+      out_n_features == 0
+          ? enif_make_list(env, 0)
+          : enif_make_list_from_array(
+                env,
+                feature_terms,
+                (unsigned)out_n_features
+            );
+
+  ERL_NIF_TERM shape =
+      enif_make_tuple_from_array(
+          env,
+          shape_terms,
+          (unsigned)out_dim
+      );
+
+  ERL_NIF_TERM scores =
+      score_count == 0
+          ? enif_make_list(env, 0)
+          : enif_make_list_from_array(
+                env,
+                score_terms,
+                (unsigned)score_count
+            );
+
+  ret =
+      exg_ok(
+          env,
+          enif_make_tuple3(
+              env,
+              features,
+              shape,
+              scores
+          )
+      );
+
 END:
+  if (feature_terms != NULL) {
+    enif_free(feature_terms);
+  }
+
+  if (shape_terms != NULL) {
+    enif_free(shape_terms);
+  }
+
+  if (score_terms != NULL) {
+    enif_free(score_terms);
+  }
+
   if (config != NULL) {
     enif_free(config);
   }
+
   return ret;
 }
 
-static ERL_NIF_TERM collect_prediction_results(ErlNifEnv *env,
-                                               const bst_ulong *out_shape,
-                                               bst_ulong out_dim,
-                                               const float *out_result) {
-  bst_ulong out_len = 1;
-  ERL_NIF_TERM shape_arr[out_dim];
-  for (bst_ulong j = 0; j < out_dim; ++j) {
-    shape_arr[j] = enif_make_int(env, out_shape[j]);
-    out_len *= out_shape[j];
+static ERL_NIF_TERM collect_prediction_results(
+    ErlNifEnv *env,
+    const bst_ulong *out_shape,
+    bst_ulong out_dim,
+    const float *out_result
+) {
+  ERL_NIF_TERM ret = 0;
+  ERL_NIF_TERM *shape_terms = NULL;
+  ERL_NIF_TERM *result_terms = NULL;
+  size_t result_len = 1;
+
+  if (out_shape == NULL) {
+    return exg_error(env, "Prediction shape is NULL");
   }
-  ERL_NIF_TERM shape = enif_make_tuple_from_array(env, shape_arr, out_dim);
-  ERL_NIF_TERM result_arr[out_len];
-  for (bst_ulong i = 0; i < out_len; ++i) {
-    // Values are copied into BEAM-managed terms here.
-    result_arr[i] = enif_make_double(env, out_result[i]);
+
+  if (out_dim == 0) {
+    return exg_error(env, "Prediction shape is empty");
   }
-  return exg_ok(env, enif_make_tuple2(
-                         env, shape,
-                         enif_make_list_from_array(env, result_arr, out_len)));
+
+  /*
+   * enif_make_tuple_from_array() takes an unsigned count.
+   */
+  if (out_dim > UINT_MAX ||
+      out_dim > SIZE_MAX / sizeof(*shape_terms)) {
+    return exg_error(env, "Prediction dimension is too large");
+  }
+
+  shape_terms =
+      enif_alloc((size_t)out_dim * sizeof(*shape_terms));
+
+  if (shape_terms == NULL) {
+    return exg_error(env, "Failed to allocate prediction shape");
+  }
+
+  for (bst_ulong i = 0; i < out_dim; ++i) {
+    bst_ulong dim_arg = out_shape[i];
+
+    if (dim_arg > SIZE_MAX) {
+      ret = exg_error(env, "Prediction dimension is too large");
+      goto END;
+    }
+
+    size_t dim = (size_t)dim_arg;
+
+    if (dim != 0 && result_len > SIZE_MAX / dim) {
+      ret = exg_error(env, "Prediction shape overflows");
+      goto END;
+    }
+
+    result_len *= dim;
+
+    shape_terms[i] =
+        enif_make_uint64(env, (ErlNifUInt64)dim_arg);
+  }
+
+  /*
+   * enif_make_list_from_array() also takes an unsigned count.
+   */
+  if (result_len > UINT_MAX ||
+      result_len > SIZE_MAX / sizeof(*result_terms)) {
+    ret = exg_error(env, "Prediction result is too large");
+    goto END;
+  }
+
+  if (result_len != 0 && out_result == NULL) {
+    ret = exg_error(env, "Prediction result is NULL");
+    goto END;
+  }
+
+  if (result_len != 0) {
+    result_terms =
+        enif_alloc(result_len * sizeof(*result_terms));
+
+    if (result_terms == NULL) {
+      ret = exg_error(env, "Failed to allocate prediction result");
+      goto END;
+    }
+
+    for (size_t i = 0; i < result_len; ++i) {
+      result_terms[i] =
+          enif_make_double(env, out_result[i]);
+    }
+  }
+
+  ERL_NIF_TERM shape =
+      enif_make_tuple_from_array(
+          env,
+          shape_terms,
+          (unsigned)out_dim
+      );
+
+  ERL_NIF_TERM results =
+      result_len == 0
+          ? enif_make_list(env, 0)
+          : enif_make_list_from_array(
+                env,
+                result_terms,
+                (unsigned)result_len
+            );
+
+  ret =
+      exg_ok(
+          env,
+          enif_make_tuple2(env, shape, results)
+      );
+
+END:
+  if (shape_terms != NULL) {
+    enif_free(shape_terms);
+  }
+
+  if (result_terms != NULL) {
+    enif_free(result_terms);
+  }
+
+  return ret;
 }
 
 ERL_NIF_TERM EXGBoosterPredictFromDMatrix(ErlNifEnv *env, int argc,
@@ -778,7 +1152,8 @@ ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
   char *data = NULL;
   const char *error_msg = NULL;
   char *config = NULL;
-  int ncols = 0;
+  bst_ulong ncols = 0;
+  ErlNifUInt64 ncols_arg = 0;
   const bst_ulong *out_shape = NULL;
   bst_ulong out_dim = 0;
   const float *out_result = NULL;
@@ -812,15 +1187,17 @@ ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
     goto END;
   }
 
-  if (!enif_get_int(env, argv[13], &ncols)) {
-    ret = exg_error(env, "Ncols must be an integer");
+  if (!enif_get_uint64(env, argv[13], &ncols_arg)) {
+    ret = exg_error(env, "Ncols must be a non-negative integer");
     goto END;
   }
 
-  if (ncols < 0) {
-    ret = exg_error(env, "Ncols must be non-negative");
+  if (ncols_arg == 0) {
+    ret = exg_error(env, "Ncols must be greater than zero");
     goto END;
   }
+
+  ncols = (bst_ulong)ncols_arg;
 
   if (!exg_get_string(env, argv[14], &config)) {
     ret = exg_error(env, "Config must be a JSON-encoded string");
@@ -836,7 +1213,7 @@ ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
   booster = *booster_resource;
   result =
       XGBoosterPredictFromCSR(booster, indptr, indices, data,
-                              (bst_ulong)ncols, config, proxy, &out_shape,
+                              ncols, config, proxy, &out_shape,
                               &out_dim, &out_result);
   if (result == 0) {
     ret = collect_prediction_results(env, out_shape, out_dim, out_result);
