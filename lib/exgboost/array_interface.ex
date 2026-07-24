@@ -103,10 +103,16 @@ defmodule EXGBoost.ArrayInterface do
 
   ## Examples
 
-      iex> EXGBoost.ArrayInterface.from_tensor(Nx.tensor([[1,2,3],[4,5,6]]))
-      #ArrayInterface<
-      %{version: 3, readonly: true, typestr: "<i4", shape: [2, 3]}
-      >
+      iex(1)> tensor = EXGBoost.ArrayInterface.from_tensor(Nx.tensor([[1,2,3],[4,5,6]]))
+      iex(2)> tensor.version
+      3
+      iex(3)> tensor.typestr
+      "<i4"
+      iex(4)> tensor.shape
+      {2, 3}
+      iex(5)> tensor.binary
+      <<1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0>>
+      iex(6)>
   """
   @spec from_tensor(Nx.Tensor.t()) :: %__MODULE__{}
   def from_tensor(%Nx.Tensor{type: t_type} = tensor) do
