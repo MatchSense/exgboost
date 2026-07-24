@@ -53,4 +53,10 @@ void exg_free_string_list(char **items, unsigned len);
 
 void exg_free_dmatrix_list(DMatrixHandle *dmats);
 
+// Array Interface helper - builds JSON from components with fresh address
+int exg_build_array_interface_json(ErlNifEnv *env, ERL_NIF_TERM binary_term,
+                                    ERL_NIF_TERM typestr_term, ERL_NIF_TERM shape_term,
+                                    ERL_NIF_TERM readonly_term, char **json_out,
+                                    const char **error_msg);
+
 #endif

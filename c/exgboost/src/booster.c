@@ -713,30 +713,37 @@ ERL_NIF_TERM EXGBoosterPredictFromDense(ErlNifEnv *env, int argc,
   DMatrixHandle proxy;
   DMatrixHandle **proxy_resource = NULL;
   char *values = NULL;
+  const char *error_msg = NULL;
   char *config = NULL;
   const bst_ulong *out_shape = NULL;
   bst_ulong out_dim = 0;
   const float *out_result = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
-  if (4 != argc) {
+
+  if (argc != 7) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
+
   if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
                          (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
-  if (!exg_get_string(env, argv[1], &values)) {
-    ret = exg_error(env, "Value must be a JSON-encoded string");
+
+  // Build ArrayInterface JSON from components: (binary, typestr, shape, readonly)
+  if (!exg_build_array_interface_json(env, argv[1], argv[2], argv[3], argv[4], &values, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract ArrayInterface");
     goto END;
   }
-  if (!exg_get_string(env, argv[2], &config)) {
+
+  if (!exg_get_string(env, argv[5], &config)) {
     ret = exg_error(env, "Config must be a JSON-encoded string");
     goto END;
   }
-  if (!enif_get_resource(env, argv[3], DMatrix_RESOURCE_TYPE,
+
+  if (!enif_get_resource(env, argv[6], DMatrix_RESOURCE_TYPE,
                          (void *)&(proxy_resource))) {
     proxy = NULL;
   } else {
@@ -759,6 +766,7 @@ END:
   }
   return ret;
 }
+
 ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
                                       const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
@@ -768,6 +776,7 @@ ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
   char *indptr = NULL;
   char *indices = NULL;
   char *data = NULL;
+  const char *error_msg = NULL;
   char *config = NULL;
   int ncols = 0;
   const bst_ulong *out_shape = NULL;
@@ -775,40 +784,50 @@ ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
   const float *out_result = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
-  if (7 != argc) {
+
+  if (argc != 16) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
+
   if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
                          (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
-  if (!exg_get_string(env, argv[1], &indptr)) {
-    ret = exg_error(env, "Indptr must be a JSON-encoded string");
+
+  // Build ArrayInterface JSON for each sparse array from components
+  if (!exg_build_array_interface_json(env, argv[1], argv[2], argv[3], argv[4], &indptr, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract indptr ArrayInterface");
     goto END;
   }
-  if (!exg_get_string(env, argv[2], &indices)) {
-    ret = exg_error(env, "Indices must be a JSON-encoded string");
+
+  if (!exg_build_array_interface_json(env, argv[5], argv[6], argv[7], argv[8], &indices, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract indices ArrayInterface");
     goto END;
   }
-  if (!exg_get_string(env, argv[3], &data)) {
-    ret = exg_error(env, "Data must be a JSON-encoded string");
+
+  if (!exg_build_array_interface_json(env, argv[9], argv[10], argv[11], argv[12], &data, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract data ArrayInterface");
     goto END;
   }
-  if (!enif_get_int(env, argv[4], &ncols)) {
+
+  if (!enif_get_int(env, argv[13], &ncols)) {
     ret = exg_error(env, "Ncols must be an integer");
     goto END;
   }
+
   if (ncols < 0) {
     ret = exg_error(env, "Ncols must be non-negative");
     goto END;
   }
-  if (!exg_get_string(env, argv[5], &config)) {
+
+  if (!exg_get_string(env, argv[14], &config)) {
     ret = exg_error(env, "Config must be a JSON-encoded string");
     goto END;
   }
-  if (!enif_get_resource(env, argv[6], DMatrix_RESOURCE_TYPE,
+
+  if (!enif_get_resource(env, argv[15], DMatrix_RESOURCE_TYPE,
                          (void *)&(proxy_resource))) {
     proxy = NULL;
   } else {
@@ -940,6 +959,7 @@ ERL_NIF_TERM EXGBoosterSerializeToBuffer(ErlNifEnv *env, int argc,
 END:
   return ret;
 }
+
 ERL_NIF_TERM EXGBoosterDeserializeFromBuffer(ErlNifEnv *env, int argc,
                                              const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;

@@ -141,38 +141,45 @@ ERL_NIF_TERM EXGDMatrixCreateFromSparse(ErlNifEnv *env, int argc,
   char *indptr_interface = NULL;
   char *indices_interface = NULL;
   char *data_interface = NULL;
+  const char *error_msg = NULL;
   int n = 0;
   char *config = NULL;
   char *format = NULL;
   DMatrixHandle handle;
   ERL_NIF_TERM ret = 0;
-  if (argc != 6) {
+
+  if (argc != 15) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!exg_get_string(env, argv[0], &indptr_interface)) {
-    ret =
-        exg_error(env, "Indptr Array Interface must be a JSON-Encoded string");
+
+  // Extract ArrayInterfaces with fresh addresses: (binary, typestr, shape, readonly) per array
+  if (!exg_build_array_interface_json(env, argv[0], argv[1], argv[2], argv[3], &indptr_interface, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract indptr ArrayInterface");
     goto END;
   }
-  if (!exg_get_string(env, argv[1], &indices_interface)) {
-    ret =
-        exg_error(env, "Indices Array Interface must be a JSON-Encoded string");
+
+  if (!exg_build_array_interface_json(env, argv[4], argv[5], argv[6], argv[7], &indices_interface, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract indices ArrayInterface");
     goto END;
   }
-  if (!exg_get_string(env, argv[2], &data_interface)) {
-    ret = exg_error(env, "Data Array Interface must be a JSON-Encoded string");
+
+  if (!exg_build_array_interface_json(env, argv[8], argv[9], argv[10], argv[11], &data_interface, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract data ArrayInterface");
     goto END;
   }
-  if (!enif_get_int(env, argv[3], &n)) {
+
+  if (!enif_get_int(env, argv[12], &n)) {
     ret = exg_error(env, "Ncol must be an integer");
     goto END;
   }
-  if (!exg_get_string(env, argv[4], &config)) {
+
+  if (!exg_get_string(env, argv[13], &config)) {
     ret = exg_error(env, "Config must be a string");
     goto END;
   }
-  if (!exg_get_string(env, argv[5], &format)) {
+
+  if (!exg_get_string(env, argv[14], &format)) {
     ret = exg_error(env, "Format must be a string");
     goto END;
   }
@@ -219,17 +226,23 @@ ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv *env, int argc,
                                        const ERL_NIF_TERM argv[]) {
   int result = -1;
   char *array_interface = NULL;
+  const char *error_msg = NULL;
   char *config = NULL;
   DMatrixHandle out;
   ERL_NIF_TERM ret = 0;
-  if (argc != 2) {
+
+  if (argc != 5) {
     ret = exg_error(env, "Wrong number of arguments");
-  }
-  if (!exg_get_string(env, argv[0], &array_interface)) {
-    ret = exg_error(env, "Array Interface must be a JSON-Encoded string");
     goto END;
   }
-  if (!exg_get_string(env, argv[1], &config)) {
+
+  // Build ArrayInterface JSON from components: (binary, typestr, shape, readonly)
+  if (!exg_build_array_interface_json(env, argv[0], argv[1], argv[2], argv[3], &array_interface, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract ArrayInterface");
+    goto END;
+  }
+
+  if (!exg_get_string(env, argv[4], &config)) {
     ret = exg_error(env, "Config must be a JSON-Encoded string");
     goto END;
   }
@@ -504,25 +517,32 @@ ERL_NIF_TERM EXGDMatrixSetInfoFromInterface(ErlNifEnv *env, int argc,
   DMatrixHandle **resource = NULL;
   char *field = NULL;
   char *data_interface = NULL;
+  const char *error_msg = NULL;
   int result = -1;
   ERL_NIF_TERM ret = 0;
-  if (argc != 3) {
+
+  if (argc != 6) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
+
   if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
                          (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
+
   if (!exg_get_string(env, argv[1], &field)) {
     ret = exg_error(env, "Field must be a string");
     goto END;
   }
-  if (!exg_get_string(env, argv[2], &data_interface)) {
-    ret = exg_error(env, "Data must be a string");
+
+  // Build ArrayInterface JSON from components: (binary, typestr, shape, readonly)
+  if (!exg_build_array_interface_json(env, argv[2], argv[3], argv[4], argv[5], &data_interface, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract data ArrayInterface");
     goto END;
   }
+
   if (strcmp(field, "label") != 0 && strcmp(field, "weight") != 0 &&
       strcmp(field, "base_margin") != 0 && strcmp(field, "group") != 0 &&
       strcmp(field, "label_lower_bound") != 0 &&
@@ -884,13 +904,98 @@ END:
   return ret;
 }
 
+// Helper to parse ArrayInterface JSON and copy data atomically
+static int exg_parse_and_copy_array_interface(
+    ErlNifEnv *env,
+    const char *json_str,
+    ERL_NIF_TERM *out_map
+) {
+  // Parse the JSON to extract address, typestr, shape
+  // For now, we'll use a simple parser since the format is predictable:
+  // {"version":3,"typestr":"<u8","data":[address,true],"shape":[n]}
+
+  const char *data_start = strstr(json_str, "\"data\":[");
+  const char *shape_start = strstr(json_str, "\"shape\":[");
+  const char *typestr_start = strstr(json_str, "\"typestr\":\"");
+
+  if (!data_start || !shape_start || !typestr_start) {
+    return 0;
+  }
+
+  // Parse address from data array
+  uintptr_t address = 0;
+  if (sscanf(data_start, "\"data\":[%" SCNuPTR, &address) != 1) {
+    return 0;
+  }
+
+  // Parse typestr (e.g., "<u8" or "<f4")
+  char typestr[16] = {0};
+  if (sscanf(typestr_start, "\"typestr\":\"%15[^\"]\""  , typestr) != 1) {
+    return 0;
+  }
+
+  // Parse shape - for simplicity, handle single dimension [n]
+  size_t shape_len = 0;
+  if (sscanf(shape_start, "\"shape\":[%zu]"  , &shape_len) != 1) {
+    return 0;
+  }
+
+  // Calculate size from typestr and shape
+  // typestr format: <endian><type><bytes> e.g. "<u8" = 8 bytes, "<f4" = 4 bytes
+  size_t bytes_per_elem = 0;
+  if (sscanf(typestr + 2, "%zu"  , &bytes_per_elem) != 1) {
+    return 0;
+  }
+
+  // Check for overflow
+  if (shape_len > SIZE_MAX / bytes_per_elem) {
+    return 0;
+  }
+  size_t total_size = shape_len * bytes_per_elem;
+
+  // Copy data from XGBoost-owned address immediately
+  ErlNifBinary data_bin;
+  if (address == 0 && total_size != 0) {
+    return 0;
+  }
+  if (!enif_alloc_binary(total_size, &data_bin)) {
+    return 0;
+  }
+  if (total_size != 0) {
+    memcpy(data_bin.data, (const void *)address, total_size);
+  }
+
+  // Build result map: %{binary: binary, typestr: string, shape: [n]}
+  ERL_NIF_TERM binary_key = enif_make_atom(env, "binary");
+  ERL_NIF_TERM typestr_key = enif_make_atom(env, "typestr");
+  ERL_NIF_TERM shape_key = enif_make_atom(env, "shape");
+
+  // Convert typestr to binary string
+  size_t typestr_len = strlen(typestr);
+  ErlNifBinary typestr_bin;
+  if (!enif_alloc_binary(typestr_len, &typestr_bin)) {
+    return 0;
+  }
+  memcpy(typestr_bin.data, typestr, typestr_len);
+
+  ERL_NIF_TERM keys[] = {binary_key, typestr_key, shape_key};
+  ERL_NIF_TERM values[] = {
+    enif_make_binary(env, &data_bin),
+    enif_make_binary(env, &typestr_bin),
+    enif_make_list1(env, enif_make_uint64(env, (ErlNifUInt64)shape_len))
+  };
+
+  return enif_make_map_from_arrays(env, keys, values, 3, out_map);
+}
+
 ERL_NIF_TERM EXGDMatrixGetQuantileCut(ErlNifEnv *env, int argc,
                                       const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   char *config = NULL;
-  char const *out_indptr = NULL;
-  char const *out_data = NULL;
+  char const *out_indptr_json = NULL;
+  char const *out_data_json = NULL;
+  ERL_NIF_TERM indptr_map, data_map;
   ERL_NIF_TERM ret = -1;
   int result = -1;
 
@@ -907,15 +1012,26 @@ ERL_NIF_TERM EXGDMatrixGetQuantileCut(ErlNifEnv *env, int argc,
     goto END;
   }
   handle = *resource;
-  result = XGDMatrixGetQuantileCut(handle, config, &out_indptr, &out_data);
-  if (result == 0) {
-    ret = exg_ok(
-        env,
-        enif_make_tuple2(env, enif_make_string(env, out_indptr, ERL_NIF_LATIN1),
-                         enif_make_string(env, out_data, ERL_NIF_LATIN1)));
-  } else {
+
+  // Get ArrayInterface JSON from XGBoost
+  result = XGDMatrixGetQuantileCut(handle, config, &out_indptr_json, &out_data_json);
+  if (result != 0) {
     ret = exg_error(env, XGBGetLastError());
+    goto END;
   }
+
+  // Parse JSON and copy data atomically, before any other operations
+  if (!exg_parse_and_copy_array_interface(env, out_indptr_json, &indptr_map)) {
+    ret = exg_error(env, "Failed to parse indptr ArrayInterface");
+    goto END;
+  }
+  if (!exg_parse_and_copy_array_interface(env, out_data_json, &data_map)) {
+    ret = exg_error(env, "Failed to parse data ArrayInterface");
+    goto END;
+  }
+
+  ret = exg_ok(env, enif_make_tuple2(env, indptr_map, data_map));
+
 END:
   if (config != NULL) {
     enif_free(config);
