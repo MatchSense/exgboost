@@ -392,7 +392,7 @@ defmodule EXGBoostTest do
     tensor = Nx.tensor([[1, 2, 3], [4, 5, 6]])
     array_interface = EXGBoost.ArrayInterface.from_tensor(tensor)
 
-    # Test that get_tensor returns the cached tensor field
+    # Test that get_tensor reconstructs the tensor from the stored binary
     assert EXGBoost.ArrayInterface.get_tensor(array_interface) == tensor
   end
 
