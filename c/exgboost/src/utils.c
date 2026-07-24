@@ -12,24 +12,26 @@ _Static_assert(
 // Cached atoms
 static ERL_NIF_TERM ATOM_TRUE;
 static ERL_NIF_TERM ATOM_FALSE;
+static ERL_NIF_TERM ATOM_OK;
+static ERL_NIF_TERM ATOM_ERROR;
 
 // Initialize atoms (call this from NIF load)
 void exg_init_atoms(ErlNifEnv *env) {
   ATOM_TRUE = enif_make_atom(env, "true");
   ATOM_FALSE = enif_make_atom(env, "false");
+  ATOM_OK = enif_make_atom(env, "ok");
+  ATOM_ERROR = enif_make_atom(env, "error");
 }
 
-// Atoms
 ERL_NIF_TERM exg_error(ErlNifEnv *env, const char *msg) {
-  ERL_NIF_TERM atom = enif_make_atom(env, "error");
   ERL_NIF_TERM msg_term = enif_make_string(env, msg, ERL_NIF_LATIN1);
-  return enif_make_tuple2(env, atom, msg_term);
+  return enif_make_tuple2(env, ATOM_ERROR, msg_term);
 }
 
-ERL_NIF_TERM ok_atom(ErlNifEnv *env) { return enif_make_atom(env, "ok"); }
+ERL_NIF_TERM ok_atom(ErlNifEnv *env) { return ATOM_OK; }
 
 ERL_NIF_TERM exg_ok(ErlNifEnv *env, ERL_NIF_TERM term) {
-  return enif_make_tuple2(env, ok_atom(env), term);
+  return enif_make_tuple2(env, ATOM_OK, term);
 }
 
 // Resource type helpers
