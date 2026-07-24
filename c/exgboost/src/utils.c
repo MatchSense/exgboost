@@ -235,8 +235,8 @@ static int exg_valid_typestr(const char *typestr) {
     return 0;
   }
 
-  // First character: endianness marker
-  if (typestr[0] != '<' && typestr[0] != '|' && typestr[0] != '>' && typestr[0] != '=') {
+  // First character: endianness marker (restrict to little-endian or non-endian)
+  if (typestr[0] != '<' && typestr[0] != '|') {
     return 0;
   }
 
