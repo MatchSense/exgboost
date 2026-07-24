@@ -10,6 +10,73 @@ defmodule EXGBoostTest do
     %{key: Nx.Random.key(42)}
   end
 
+  test "small tensor predictions remain stable under GC pressure" do
+    training_x =
+      Nx.tensor(
+        [
+          [0.0, 0.0, 0.0, 0.0],
+          [0.0, 0.0, 1.0, 1.0],
+          [0.0, 1.0, 0.0, 1.0],
+          [0.0, 1.0, 1.0, 0.0],
+          [1.0, 0.0, 0.0, 1.0],
+          [1.0, 0.0, 1.0, 0.0],
+          [1.0, 1.0, 0.0, 0.0],
+          [1.0, 1.0, 1.0, 1.0]
+        ],
+        type: {:f, 32}
+      )
+
+    training_y =
+      Nx.tensor(
+        [0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0],
+        type: {:f, 32}
+      )
+
+    booster =
+      EXGBoost.train(
+        training_x,
+        training_y,
+        num_boost_rounds: 10,
+        tree_method: :hist,
+        objective: :reg_squarederror,
+        seed: 0,
+        verbose_eval: false
+      )
+
+    sample =
+      Nx.tensor(
+        [[1.0, 0.0, 1.0, 0.0]],
+        type: {:f, 32}
+      )
+
+    baseline =
+      EXGBoost.inplace_predict(
+        booster,
+        sample,
+        validate_features: false
+      )
+
+    for iteration <- 1..100 do
+      # Create heap pressure before forcing collection.
+      _pressure =
+        for _ <- 1..1_000 do
+          :crypto.strong_rand_bytes(128)
+        end
+
+      :erlang.garbage_collect(self())
+
+      prediction =
+        EXGBoost.inplace_predict(
+          booster,
+          sample,
+          validate_features: false
+        )
+
+      assert Nx.all_close(prediction, baseline),
+             "prediction changed on iteration #{iteration}"
+    end
+  end
+
   test "dmatrix_from_tensor", context do
     nrows = :rand.uniform(10)
     ncols = :rand.uniform(10)
