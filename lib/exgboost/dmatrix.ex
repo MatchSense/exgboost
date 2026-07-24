@@ -180,17 +180,8 @@ defmodule EXGBoost.DMatrix do
   end
 
   defp build_tensor_from_map(%{binary: binary, typestr: typestr, shape: shape}) do
-    # Parse typestr to get Nx type
-    <<_endian::utf8, char_code::binary-size(1), bytes::binary>> = typestr
-    bit_width = String.to_integer(bytes) * 8
-
-    nx_type =
-      case char_code do
-        "i" -> {:s, bit_width}
-        "u" -> {:u, bit_width}
-        "f" -> {:f, bit_width}
-        "c" -> {:c, bit_width}
-      end
+    # Parse typestr using shared ArrayInterface helper (raises ArgumentError on invalid format)
+    nx_type = EXGBoost.ArrayInterface.parse_typestr!(typestr)
 
     # Convert shape list to tuple
     shape_tuple = List.to_tuple(shape)

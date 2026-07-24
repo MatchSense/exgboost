@@ -2,7 +2,9 @@ defmodule EXGBoostTest do
   alias EXGBoost.DMatrix
   alias EXGBoost.Booster
   use ExUnit.Case, async: true
+
   doctest EXGBoost
+  doctest EXGBoost.ArrayInterface
 
   setup do
     %{key: Nx.Random.key(42)}
@@ -423,6 +425,50 @@ defmodule EXGBoostTest do
         readonly: true,
         binary: nil
       })
+    end
+  end
+
+  test "array interface parse_typestr validates format" do
+    # Valid typestrs should work (non-bang version returns tuples)
+    assert {:ok, {:s, 64}} = EXGBoost.ArrayInterface.parse_typestr("<i8")
+    assert {:ok, {:u, 32}} = EXGBoost.ArrayInterface.parse_typestr("<u4")
+    assert {:ok, {:f, 32}} = EXGBoost.ArrayInterface.parse_typestr("<f4")
+    assert {:ok, {:f, 64}} = EXGBoost.ArrayInterface.parse_typestr("<f8")
+    assert {:ok, {:c, 128}} = EXGBoost.ArrayInterface.parse_typestr("<c16")
+    assert {:ok, {:s, 8}} = EXGBoost.ArrayInterface.parse_typestr("|i1")
+
+    # Bang version returns values directly
+    assert {:s, 64} = EXGBoost.ArrayInterface.parse_typestr!("<i8")
+    assert {:f, 32} = EXGBoost.ArrayInterface.parse_typestr!("<f4")
+
+    # Non-bang version returns errors
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr("<x4")
+    assert reason =~ "Unsupported typestr type code"
+
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr("<fABC")
+    assert reason =~ "Invalid byte count"
+
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr("<f")
+    assert reason =~ "Invalid typestr"
+
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr("")
+    assert reason =~ "Invalid typestr"
+
+    # Bang version raises on errors
+    assert_raise ArgumentError, ~r/Unsupported typestr type code \"x\" in \"<x4\"/, fn ->
+      EXGBoost.ArrayInterface.parse_typestr!("<x4")
+    end
+
+    assert_raise ArgumentError, ~r/Invalid byte count/, fn ->
+      EXGBoost.ArrayInterface.parse_typestr!("<fABC")
+    end
+
+    assert_raise ArgumentError, ~r/Invalid typestr/, fn ->
+      EXGBoost.ArrayInterface.parse_typestr!("<f")
+    end
+
+    assert_raise ArgumentError, ~r/Invalid typestr/, fn ->
+      EXGBoost.ArrayInterface.parse_typestr!("")
     end
   end
 

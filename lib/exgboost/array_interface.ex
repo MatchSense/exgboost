@@ -101,11 +101,12 @@ defmodule EXGBoost.ArrayInterface do
   @doc """
   This function is used to convert Nx.Tensors to the ArrayInterface format.
 
-  Example:
-    iex> EXGBoost.ArrayInterface.from_tensor(Nx.tensor([[1,2,3],[4,5,6]]))
-        #ArrayInterface<
-        %{readonly: true, shape: [2, 3], typestr: "<i8", version: 3}
-        >
+  ## Examples
+
+      iex> EXGBoost.ArrayInterface.from_tensor(Nx.tensor([[1,2,3],[4,5,6]]))
+      #ArrayInterface<
+      %{version: 3, readonly: true, typestr: "<i4", shape: [2, 3]}
+      >
   """
   @spec from_tensor(Nx.Tensor.t()) :: %__MODULE__{}
   def from_tensor(%Nx.Tensor{type: t_type} = tensor) do
@@ -133,21 +134,57 @@ defmodule EXGBoost.ArrayInterface do
     }
   end
 
+  @doc """
+  Parses a NumPy Array Interface `typestr` into an Nx type.
+
+  Returns `{:ok, type}` on success or `{:error, reason}` on failure.
+
+  Only little-endian multi-byte numeric values and byte-order-independent
+  single-byte values are supported.
+
+  ## Examples
+
+      iex> EXGBoost.ArrayInterface.parse_typestr("<f4")
+      {:ok, {:f, 32}}
+
+      iex> EXGBoost.ArrayInterface.parse_typestr("<i8")
+      {:ok, {:s, 64}}
+
+      iex> EXGBoost.ArrayInterface.parse_typestr("<x4")
+      {:error, "Unsupported typestr type code \\"x\\" in \\"<x4\\""}
+
+  """
+  @spec parse_typestr(String.t()) ::
+          {:ok, Nx.Type.t()} | {:error, String.t()}
+  def parse_typestr(typestr) when is_binary(typestr) do
+    with {:ok, endian, type_code, byte_count} <- split_typestr(typestr),
+         :ok <- validate_endianness(endian, byte_count, typestr),
+         {:ok, type_atom} <- parse_type_code(type_code, typestr),
+         {:ok, nx_type} <- normalize_type(type_atom, byte_count, typestr) do
+      {:ok, nx_type}
+    end
+  end
+
+  @doc """
+  Parses a NumPy Array Interface `typestr` into an Nx type.
+
+  Raises `ArgumentError` when the value is malformed or unsupported.
+  """
+  @spec parse_typestr!(String.t()) :: Nx.Type.t()
+  def parse_typestr!(typestr) when is_binary(typestr) do
+    case parse_typestr(typestr) do
+      {:ok, type} ->
+        type
+
+      {:error, reason} ->
+        raise ArgumentError, reason
+    end
+  end
+
   @spec get_tensor(EXGBoost.ArrayInterface.t()) :: Nx.Tensor.t()
   def get_tensor(%__MODULE__{binary: binary, typestr: typestr, shape: shape})
       when is_binary(binary) do
-    # Parse typestr to get Nx type
-    <<_endian::utf8, char_code::binary-size(1), bytes::binary>> = typestr
-    bit_width = String.to_integer(bytes) * 8
-
-    nx_type =
-      case char_code do
-        "i" -> {:s, bit_width}
-        "u" -> {:u, bit_width}
-        "f" -> {:f, bit_width}
-        "c" -> {:c, bit_width}
-      end
-
+    nx_type = parse_typestr!(typestr)
     Nx.from_binary(binary, nx_type) |> Nx.reshape(shape)
   end
 
@@ -159,5 +196,63 @@ defmodule EXGBoost.ArrayInterface do
     If you're seeing this error, ensure the ArrayInterface was created with
     from_tensor/1 or includes binary data from a NIF (like get_quantile_cut).
     """
+  end
+
+  defp split_typestr(<<endian, type_code, bytes::binary>> = typestr)
+       when endian in [?<, ?>, ?|] and bytes != "" do
+    case Integer.parse(bytes) do
+      {byte_count, ""} when byte_count > 0 ->
+        {:ok, endian, type_code, byte_count}
+
+      _ ->
+        {:error,
+         "Invalid byte count in #{inspect(typestr)}; " <>
+           ~s(expected a positive integer, for example "<f4")}
+    end
+  end
+
+  defp split_typestr(typestr) do
+    {:error,
+     "Invalid typestr #{inspect(typestr)}; " <>
+       ~s(expected a value such as "<f4", "<i8", or "|u1")}
+  end
+
+  defp validate_endianness(?>, _byte_count, typestr) do
+    {:error,
+     "Big-endian typestr #{inspect(typestr)} is unsupported; " <>
+       "the binary must be byte-swapped before constructing the Nx tensor"}
+  end
+
+  defp validate_endianness(?|, byte_count, typestr)
+       when byte_count != 1 do
+    {:error,
+     "Byte-order-independent marker \"|\" is invalid for " <>
+       "multi-byte numeric type #{inspect(typestr)}"}
+  end
+
+  defp validate_endianness(_endian, _byte_count, _typestr), do: :ok
+
+  defp parse_type_code(?i, _typestr), do: {:ok, :s}
+  defp parse_type_code(?u, _typestr), do: {:ok, :u}
+  defp parse_type_code(?f, _typestr), do: {:ok, :f}
+  defp parse_type_code(?c, _typestr), do: {:ok, :c}
+
+  defp parse_type_code(type_code, typestr) do
+    {:error,
+     "Unsupported typestr type code " <>
+       "#{inspect(<<type_code>>)} in #{inspect(typestr)}"}
+  end
+
+  defp normalize_type(type_atom, byte_count, typestr) do
+    type = {type_atom, byte_count * 8}
+
+    try do
+      {:ok, Nx.Type.normalize!(type)}
+    rescue
+      ArgumentError ->
+        {:error,
+         "typestr #{inspect(typestr)} maps to unsupported Nx type " <>
+           inspect(type)}
+    end
   end
 end

@@ -40,8 +40,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **DMatrix Improvements**:
   - `get_quantile_cut/1` refactored to return maps with `:binary`, `:typestr`, `:shape` instead of JSON with memory addresses
-  - Added internal `build_tensor_from_map/1` helper to reconstruct tensors from NIF-returned data
   - All data copying happens atomically within C before returning to Elixir
+  - Consolidated typestr parsing logic - `build_tensor_from_map/1` now uses shared `ArrayInterface.parse_typestr/1` helper
+
+- **Typestr Handing Improvements**:
+  - **Explicit error handling**: Added `ArrayInterface.parse_typestr/1` (returns `{:ok, type}` or `{:error, reason}`) and `parse_typestr!/1` (raises `ArgumentError`) following Elixir conventions
+  - **Better diagnostics**: Invalid typestr now raises clear error messages instead of cryptic `MatchError` or `CaseClauseError`
+  - **Flattened control flow**: Refactored `parse_typestr` from 3 levels of nested `case` statements to clean `with` expression with helper function
+  - **Code consolidation**: Eliminated duplicate typestr parsing logic between `ArrayInterface.get_tensor/1` and `DMatrix.build_tensor_from_map/1`
+  - **Comprehensive validation**: `parse_typestr/1` validates format, type codes (i/u/f/c), and byte counts with helpful error messages
+  - **Flexible error handling**: Callers can choose between tuple-based error handling (`parse_typestr/1`) or exception-based (`parse_typestr!/1`)
 
 - **Unsafe APIs marked as DEPRECATED - to be removed in future releases**:
   - `EXGBoost.NIF.get_binary_from_address/2` - arbitrary memory read primitive that could crash the BEAM VM
