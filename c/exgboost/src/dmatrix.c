@@ -331,6 +331,11 @@ ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc,
   result =
       XGDMatrixGetStrFeatureInfo(handle, field, &out_size, &c_out_features);
   if (result == 0) {
+    // Check VLA size fits in size_t
+    if (out_size > SIZE_MAX / sizeof(ERL_NIF_TERM)) {
+      ret = exg_error(env, "Result is too large");
+      goto END;
+    }
     ERL_NIF_TERM arr[out_size];
     for (bst_ulong i = 0; i < out_size; ++i) {
       // enif_make_string materializes a BEAM term; no temporary C copy needed.
@@ -728,9 +733,16 @@ ERL_NIF_TERM EXGDMatrixGetDataAsCSR(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
     goto END;
   }
-  out_indptr = malloc(sizeof(bst_ulong) * (num_rows + 1));
-  out_indices = malloc(sizeof(unsigned) * num_non_missing);
-  out_data = malloc(sizeof(float) * num_non_missing);
+  // Check allocation sizes fit in size_t
+  if (num_rows > SIZE_MAX / sizeof(bst_ulong) - 1 ||
+      num_non_missing > SIZE_MAX / sizeof(unsigned) ||
+      num_non_missing > SIZE_MAX / sizeof(float)) {
+    ret = exg_error(env, "Matrix is too large");
+    goto END;
+  }
+  out_indptr = malloc(sizeof(bst_ulong) * (size_t)(num_rows + 1));
+  out_indices = malloc(sizeof(unsigned) * (size_t)num_non_missing);
+  out_data = malloc(sizeof(float) * (size_t)num_non_missing);
   if (!out_indptr || !out_indices || !out_data) {
     ret = exg_error(env, "Failed to allocate memory");
     goto END;
@@ -741,9 +753,12 @@ ERL_NIF_TERM EXGDMatrixGetDataAsCSR(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
     goto END;
   }
-  indptr = enif_alloc(sizeof(ERL_NIF_TERM) * (num_rows + 1));
-  indices = enif_alloc(sizeof(ERL_NIF_TERM) * num_non_missing);
-  data = enif_alloc(sizeof(ERL_NIF_TERM) * num_non_missing);
+  // Check enif_alloc sizes fit in size_t
+  if (num_rows > SIZE_MAX / sizeof(ERL_NIF_TERM) - 1 ||
+      num_non_missing > SIZE_MAX / sizeof(ERL_NIF_TERM)) {
+    ret = exg_error(env, "Matrix is too large");
+    goto END;
+  }
   indptr = enif_alloc(sizeof(ERL_NIF_TERM) * (size_t)(num_rows + 1));
   indices = enif_alloc(sizeof(ERL_NIF_TERM) * (size_t)num_non_missing);
   data = enif_alloc(sizeof(ERL_NIF_TERM) * (size_t)num_non_missing);

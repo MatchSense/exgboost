@@ -460,6 +460,11 @@ ERL_NIF_TERM EXGBoosterGetAttrNames(ErlNifEnv *env, int argc,
   booster = *booster_resource;
   result = XGBoosterGetAttrNames(booster, &out_len, &out);
   if (result == 0) {
+    // Check VLA size fits in size_t
+    if (out_len > SIZE_MAX / sizeof(ERL_NIF_TERM)) {
+      ret = exg_error(env, "Result is too large");
+      goto END;
+    }
     ERL_NIF_TERM arr[out_len];
     for (bst_ulong i = 0; i < out_len; ++i) {
       arr[i] = enif_make_string(env, out[i], ERL_NIF_LATIN1);
@@ -551,6 +556,11 @@ ERL_NIF_TERM EXGBoosterGetStrFeatureInfo(ErlNifEnv *env, int argc,
   result =
       XGBoosterGetStrFeatureInfo(handle, field, &out_size, &c_out_features);
   if (result == 0) {
+    // Check VLA size fits in size_t
+    if (out_size > SIZE_MAX / sizeof(ERL_NIF_TERM)) {
+      ret = exg_error(env, "Result is too large");
+      goto END;
+    }
     ERL_NIF_TERM arr[out_size];
     for (bst_ulong i = 0; i < out_size; ++i) {
       // enif_make_string materializes a BEAM term; no temporary C copy needed.
@@ -597,6 +607,12 @@ ERL_NIF_TERM EXGBoosterFeatureScore(ErlNifEnv *env, int argc,
       XGBoosterFeatureScore(booster, config, &out_n_features, &out_features,
                             &out_dim, &out_shape, &out_scores);
   if (result == 0) {
+    // Check VLA sizes fit in size_t
+    if (out_n_features > SIZE_MAX / sizeof(ERL_NIF_TERM) ||
+        out_dim > SIZE_MAX / sizeof(ERL_NIF_TERM)) {
+      ret = exg_error(env, "Result is too large");
+      goto END;
+    }
     ERL_NIF_TERM feature_arr[out_n_features];
     for (bst_ulong i = 0; i < out_n_features; ++i) {
       ERL_NIF_TERM shape_arr[out_dim];
