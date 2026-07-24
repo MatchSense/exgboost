@@ -2,7 +2,7 @@
 #include <ctype.h>
 #include <inttypes.h>
 #include <stdint.h>
-
+#include <stdlib.h>
 // Ensure bst_ulong and ErlNifUInt64 are both 64-bit for safe conversions
 _Static_assert(
     sizeof(bst_ulong) == sizeof(ErlNifUInt64),
