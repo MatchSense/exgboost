@@ -12,6 +12,9 @@ ErlNifResourceType *DMatrix_RESOURCE_TYPE;
 ErlNifResourceType *Booster_RESOURCE_TYPE;
 typedef uint64_t bst_ulong;
 
+// Initialize atoms (must be called during NIF load)
+void exg_init_atoms(ErlNifEnv *env);
+
 void DMatrix_RESOURCE_TYPE_cleanup(ErlNifEnv *env, void *arg);
 
 void Booster_RESOURCE_TYPE_cleanup(ErlNifEnv *env, void *arg);

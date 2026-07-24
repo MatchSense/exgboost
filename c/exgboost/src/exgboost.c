@@ -1,6 +1,8 @@
 #include "exgboost.h"
 
 static int load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
+  exg_init_atoms(env);
+
   DMatrix_RESOURCE_TYPE = enif_open_resource_type(
       env, NULL, "DMatrix_RESOURCE_TYPE", DMatrix_RESOURCE_TYPE_cleanup,
       (ErlNifResourceFlags)(ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER), NULL);
@@ -15,6 +17,8 @@ static int load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
 
 static int upgrade(ErlNifEnv *env, void **priv_data, void **old_priv_data,
                    ERL_NIF_TERM load_info) {
+  exg_init_atoms(env);
+
   DMatrix_RESOURCE_TYPE = enif_open_resource_type(
       env, NULL, "DMatrix_RESOURCE_TYPE", DMatrix_RESOURCE_TYPE_cleanup,
       ERL_NIF_RT_TAKEOVER, NULL);

@@ -9,6 +9,16 @@ _Static_assert(
     "bst_ulong and ErlNifUInt64 must both be 64-bit"
 );
 
+// Cached atoms
+static ERL_NIF_TERM ATOM_TRUE;
+static ERL_NIF_TERM ATOM_FALSE;
+
+// Initialize atoms (call this from NIF load)
+void exg_init_atoms(ErlNifEnv *env) {
+  ATOM_TRUE = enif_make_atom(env, "true");
+  ATOM_FALSE = enif_make_atom(env, "false");
+}
+
 // Atoms
 ERL_NIF_TERM exg_error(ErlNifEnv *env, const char *msg) {
   ERL_NIF_TERM atom = enif_make_atom(env, "error");
