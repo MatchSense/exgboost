@@ -187,7 +187,7 @@ ERL_NIF_TERM EXGBoosterGetNumFeature(ErlNifEnv *env, int argc,
   booster = *resource;
   result = XGBoosterGetNumFeature(booster, &num_feature);
   if (result == 0) {
-    ret = exg_ok(env, enif_make_ulong(env, num_feature));
+    ret = exg_ok(env, enif_make_uint64(env, (ErlNifUInt64)num_feature));
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
@@ -460,11 +460,16 @@ ERL_NIF_TERM EXGBoosterGetAttrNames(ErlNifEnv *env, int argc,
   booster = *booster_resource;
   result = XGBoosterGetAttrNames(booster, &out_len, &out);
   if (result == 0) {
+    // Check VLA size fits in size_t
+    if (out_len > SIZE_MAX / sizeof(ERL_NIF_TERM)) {
+      ret = exg_error(env, "Result is too large");
+      goto END;
+    }
     ERL_NIF_TERM arr[out_len];
     for (bst_ulong i = 0; i < out_len; ++i) {
       arr[i] = enif_make_string(env, out[i], ERL_NIF_LATIN1);
     }
-    ret = exg_ok(env, enif_make_list_from_array(env, arr, out_len));
+    ret = exg_ok(env, enif_make_list_from_array(env, arr, (size_t)out_len));
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
@@ -551,12 +556,17 @@ ERL_NIF_TERM EXGBoosterGetStrFeatureInfo(ErlNifEnv *env, int argc,
   result =
       XGBoosterGetStrFeatureInfo(handle, field, &out_size, &c_out_features);
   if (result == 0) {
+    // Check VLA size fits in size_t
+    if (out_size > SIZE_MAX / sizeof(ERL_NIF_TERM)) {
+      ret = exg_error(env, "Result is too large");
+      goto END;
+    }
     ERL_NIF_TERM arr[out_size];
     for (bst_ulong i = 0; i < out_size; ++i) {
       // enif_make_string materializes a BEAM term; no temporary C copy needed.
       arr[i] = enif_make_string(env, c_out_features[i], ERL_NIF_LATIN1);
     }
-    ret = exg_ok(env, enif_make_list_from_array(env, arr, out_size));
+    ret = exg_ok(env, enif_make_list_from_array(env, arr, (size_t)out_size));
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
@@ -597,6 +607,12 @@ ERL_NIF_TERM EXGBoosterFeatureScore(ErlNifEnv *env, int argc,
       XGBoosterFeatureScore(booster, config, &out_n_features, &out_features,
                             &out_dim, &out_shape, &out_scores);
   if (result == 0) {
+    // Check VLA sizes fit in size_t
+    if (out_n_features > SIZE_MAX / sizeof(ERL_NIF_TERM) ||
+        out_dim > SIZE_MAX / sizeof(ERL_NIF_TERM)) {
+      ret = exg_error(env, "Result is too large");
+      goto END;
+    }
     ERL_NIF_TERM feature_arr[out_n_features];
     for (bst_ulong i = 0; i < out_n_features; ++i) {
       ERL_NIF_TERM shape_arr[out_dim];
@@ -697,30 +713,37 @@ ERL_NIF_TERM EXGBoosterPredictFromDense(ErlNifEnv *env, int argc,
   DMatrixHandle proxy;
   DMatrixHandle **proxy_resource = NULL;
   char *values = NULL;
+  const char *error_msg = NULL;
   char *config = NULL;
   const bst_ulong *out_shape = NULL;
   bst_ulong out_dim = 0;
   const float *out_result = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
-  if (4 != argc) {
+
+  if (argc != 7) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
+
   if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
                          (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
-  if (!exg_get_string(env, argv[1], &values)) {
-    ret = exg_error(env, "Value must be a JSON-encoded string");
+
+  // Build ArrayInterface JSON from components: (binary, typestr, shape, readonly)
+  if (!exg_build_array_interface_json(env, argv[1], argv[2], argv[3], argv[4], &values, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract ArrayInterface");
     goto END;
   }
-  if (!exg_get_string(env, argv[2], &config)) {
+
+  if (!exg_get_string(env, argv[5], &config)) {
     ret = exg_error(env, "Config must be a JSON-encoded string");
     goto END;
   }
-  if (!enif_get_resource(env, argv[3], DMatrix_RESOURCE_TYPE,
+
+  if (!enif_get_resource(env, argv[6], DMatrix_RESOURCE_TYPE,
                          (void *)&(proxy_resource))) {
     proxy = NULL;
   } else {
@@ -743,6 +766,7 @@ END:
   }
   return ret;
 }
+
 ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
                                       const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
@@ -752,6 +776,7 @@ ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
   char *indptr = NULL;
   char *indices = NULL;
   char *data = NULL;
+  const char *error_msg = NULL;
   char *config = NULL;
   int ncols = 0;
   const bst_ulong *out_shape = NULL;
@@ -759,40 +784,50 @@ ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
   const float *out_result = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
-  if (7 != argc) {
+
+  if (argc != 16) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
+
   if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
                          (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
-  if (!exg_get_string(env, argv[1], &indptr)) {
-    ret = exg_error(env, "Indptr must be a JSON-encoded string");
+
+  // Build ArrayInterface JSON for each sparse array from components
+  if (!exg_build_array_interface_json(env, argv[1], argv[2], argv[3], argv[4], &indptr, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract indptr ArrayInterface");
     goto END;
   }
-  if (!exg_get_string(env, argv[2], &indices)) {
-    ret = exg_error(env, "Indices must be a JSON-encoded string");
+
+  if (!exg_build_array_interface_json(env, argv[5], argv[6], argv[7], argv[8], &indices, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract indices ArrayInterface");
     goto END;
   }
-  if (!exg_get_string(env, argv[3], &data)) {
-    ret = exg_error(env, "Data must be a JSON-encoded string");
+
+  if (!exg_build_array_interface_json(env, argv[9], argv[10], argv[11], argv[12], &data, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract data ArrayInterface");
     goto END;
   }
-  if (!enif_get_int(env, argv[4], &ncols)) {
+
+  if (!enif_get_int(env, argv[13], &ncols)) {
     ret = exg_error(env, "Ncols must be an integer");
     goto END;
   }
+
   if (ncols < 0) {
     ret = exg_error(env, "Ncols must be non-negative");
     goto END;
   }
-  if (!exg_get_string(env, argv[5], &config)) {
+
+  if (!exg_get_string(env, argv[14], &config)) {
     ret = exg_error(env, "Config must be a JSON-encoded string");
     goto END;
   }
-  if (!enif_get_resource(env, argv[6], DMatrix_RESOURCE_TYPE,
+
+  if (!enif_get_resource(env, argv[15], DMatrix_RESOURCE_TYPE,
                          (void *)&(proxy_resource))) {
     proxy = NULL;
   } else {
@@ -899,7 +934,6 @@ ERL_NIF_TERM EXGBoosterSerializeToBuffer(ErlNifEnv *env, int argc,
   const char *out_buf = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
-  ErlNifBinary out_bin;
   if (1 != argc) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
@@ -915,15 +949,22 @@ ERL_NIF_TERM EXGBoosterSerializeToBuffer(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
     goto END;
   }
-  if (!enif_alloc_binary(out_len, &out_bin)) {
+
+  // Use enif_make_new_binary for cleaner memory management
+  ERL_NIF_TERM binary_term;
+  unsigned char *dest = enif_make_new_binary(env, out_len, &binary_term);
+  if (dest == NULL && out_len != 0) {
     ret = exg_error(env, "Failed to allocate binary");
     goto END;
   }
-  memcpy(out_bin.data, out_buf, out_len);
-  ret = exg_ok(env, enif_make_binary(env, &out_bin));
+  if (out_len > 0) {
+    memcpy(dest, out_buf, out_len);
+  }
+  ret = exg_ok(env, binary_term);
 END:
   return ret;
 }
+
 ERL_NIF_TERM EXGBoosterDeserializeFromBuffer(ErlNifEnv *env, int argc,
                                              const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
@@ -1005,7 +1046,6 @@ ERL_NIF_TERM EXGBoosterSaveModelToBuffer(ErlNifEnv *env, int argc,
   char *config = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
-  ErlNifBinary out_bin;
   if (2 != argc) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
@@ -1026,12 +1066,18 @@ ERL_NIF_TERM EXGBoosterSaveModelToBuffer(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
     goto END;
   }
-  if (!enif_alloc_binary(out_len, &out_bin)) {
+
+  // Use enif_make_new_binary for cleaner memory management
+  ERL_NIF_TERM binary_term;
+  unsigned char *dest = enif_make_new_binary(env, out_len, &binary_term);
+  if (dest == NULL && out_len != 0) {
     ret = exg_error(env, "Failed to allocate binary");
     goto END;
   }
-  memcpy(out_bin.data, out_buf, out_len);
-  ret = exg_ok(env, enif_make_binary(env, &out_bin));
+  if (out_len > 0) {
+    memcpy(dest, out_buf, out_len);
+  }
+  ret = exg_ok(env, binary_term);
 END:
   if (config != NULL) {
     enif_free(config);
@@ -1047,7 +1093,6 @@ ERL_NIF_TERM EXGBoosterSaveJsonConfig(ErlNifEnv *env, int argc,
   const char *out_buf = NULL;
   int result = -1;
   ERL_NIF_TERM ret = -1;
-  ErlNifBinary out_bin;
   if (1 != argc) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
@@ -1063,12 +1108,18 @@ ERL_NIF_TERM EXGBoosterSaveJsonConfig(ErlNifEnv *env, int argc,
     ret = exg_error(env, XGBGetLastError());
     goto END;
   }
-  if (!enif_alloc_binary(out_len, &out_bin)) {
+
+  // Use enif_make_new_binary for cleaner memory management
+  ERL_NIF_TERM binary_term;
+  unsigned char *dest = enif_make_new_binary(env, out_len, &binary_term);
+  if (dest == NULL && out_len != 0) {
     ret = exg_error(env, "Failed to allocate binary");
     goto END;
   }
-  memcpy(out_bin.data, out_buf, out_len);
-  ret = exg_ok(env, enif_make_binary(env, &out_bin));
+  if (out_len > 0) {
+    memcpy(dest, out_buf, out_len);
+  }
+  ret = exg_ok(env, binary_term);
 END:
   return ret;
 }

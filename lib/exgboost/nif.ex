@@ -15,7 +15,9 @@ defmodule EXGBoost.NIF do
   JSON-Encoded Array Interface as defined in the NumPy documentation.
   https://numpy.org/doc/stable/reference/arrays.interface.html
   """
-  @type array_interface :: String.t()
+
+  @type typestr :: String.t()
+  @type shape :: [integer()]
   @type dmatrix_reference :: reference()
   @type booster_reference :: reference()
   @type exgboost_return_type(return_type) :: {:ok, return_type} | {:error, String.t()}
@@ -127,44 +129,69 @@ defmodule EXGBoost.NIF do
     do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_create_from_sparse(
-          array_interface(),
-          array_interface(),
-          array_interface(),
+          binary(),
+          typestr(),
+          shape(),
+          boolean(),
+          binary(),
+          typestr(),
+          shape(),
+          boolean(),
+          binary(),
+          typestr(),
+          shape(),
+          boolean(),
           integer(),
           String.t(),
           String.t()
         ) :: exgboost_return_type(dmatrix_reference())
   @doc """
-  Create a DMatrix from a Sparse matrix (CSR / CSC)
+  Create a DMatrix from Sparse matrix Array Interface components (CSR / CSC)
 
-  Returns a reference to the DMatrix.
+  Arguments for each array (indptr, indices, data):
+  - binary: The raw tensor data
+  - typestr: Data type string (e.g., \"<i4\", \"<f4\")
+  - shape: List of dimensions
+  - readonly: Boolean indicating if data is read-only
 
-  ## Examples
-
-      iex> EXGBoost.NIF.dmatrix_create_from_csr([0, 2, 3], [0, 2, 2, 0], [1, 2, 3, 4], 2, 2, -1.0)
-      {:ok, #Reference<>}
-
-      iex> EXGBoost.NIF.dmatrix_create_from_csr([0, 2, 3], [0, 2, 2, 0], [1, 2, 3, 4], 2, 2, -1.0)
-      {:error #Reference<>}
+  Plus:
+  - n: Number of columns (CSR) or rows (CSC)
+  - config: JSON configuration string
+  - format: \"csr\" or \"csc\"
   """
   def dmatrix_create_from_sparse(
-        _indptr_interface,
-        _indices_interface,
-        _data_interface,
+        _indptr_binary,
+        _indptr_typestr,
+        _indptr_shape,
+        _indptr_readonly,
+        _indices_binary,
+        _indices_typestr,
+        _indices_shape,
+        _indices_readonly,
+        _data_binary,
+        _data_typestr,
+        _data_shape,
+        _data_readonly,
         _n,
         _config,
         _format
       ),
       do: :erlang.nif_error(:not_implemented)
 
-  @spec dmatrix_create_from_dense(array_interface(), String.t()) ::
+  @spec dmatrix_create_from_dense(binary(), typestr(), shape(), boolean(), String.t()) ::
           exgboost_return_type(dmatrix_reference())
   @doc """
-  Create a DMatrix from a JSON-Encoded Array-Interface
+  Create a DMatrix from Array Interface components
   https://numpy.org/doc/stable/reference/arrays.interface.html
 
+  Arguments:
+  - binary: The raw tensor data
+  - typestr: Data type string (e.g., "<f4")
+  - shape: List of dimensions
+  - readonly: Boolean indicating if data is read-only
+  - config: JSON configuration string
   """
-  def dmatrix_create_from_dense(_array_interface, _config),
+  def dmatrix_create_from_dense(_binary, _typestr, _shape, _readonly, _config),
     do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_get_str_feature_info(dmatrix_reference(), String.t()) ::
@@ -189,12 +216,14 @@ defmodule EXGBoost.NIF do
   @spec dmatrix_set_info_from_interface(
           dmatrix_reference(),
           String.t(),
-          array_interface()
+          binary(),
+          typestr(),
+          shape(),
+          boolean()
         ) :: :ok | {:error, String.t()}
   @doc """
-  Set the info from an array interface
-  Valid fields are:
-  Set meta info from dense matrix. Valid field names are:
+  Set the info from Array Interface components
+  Valid field names are:
   * label
   * weight
   * base_margin
@@ -203,7 +232,7 @@ defmodule EXGBoost.NIF do
   * label_upper_bound
   * feature_weights
   """
-  def dmatrix_set_info_from_interface(_handle, _field, _data_interface),
+  def dmatrix_set_info_from_interface(_handle, _field, _binary, _typestr, _shape, _readonly),
     do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_save_binary(dmatrix_reference(), String.t(), integer()) ::
@@ -211,10 +240,14 @@ defmodule EXGBoost.NIF do
   def dmatrix_save_binary(_handle, _fname, _silent),
     do: :erlang.nif_error(:not_implemented)
 
+  @doc deprecated:
+         "Known to be unsafe, to be removed in future releases. Prefer NIF owning the address stability and lifetime guarantee."
   @spec get_binary_address(dmatrix_reference()) :: exgboost_return_type(integer)
   def get_binary_address(_handle),
     do: :erlang.nif_error(:not_implemented)
 
+  @doc deprecated:
+         "Known to be unsafe, to be removed in future releases. Prefer NIF owning the address stability and lifetime guarantee."
   @spec get_binary_from_address(integer(), integer()) :: exgboost_return_type(binary())
   def get_binary_from_address(_address, _size), do: :erlang.nif_error(:not_implemented)
 
@@ -333,23 +366,57 @@ defmodule EXGBoost.NIF do
   def booster_predict_from_dmatrix(_boster, _dmatrix, _config),
     do: :erlang.nif_error(:not_implemented)
 
-  @spec booster_predict_from_dense(booster_reference(), String.t(), String.t(), reference() | nil) ::
+  @spec booster_predict_from_dense(
+          booster_reference(),
+          binary(),
+          String.t(),
+          [integer()],
+          boolean(),
+          String.t(),
+          reference() | nil
+        ) ::
           tuple()
-  def booster_predict_from_dense(_boster, _values, _config, _proxy),
+  def booster_predict_from_dense(_booster, _binary, _typestr, _shape, _readonly, _config, _proxy),
     do: :erlang.nif_error(:not_implemented)
 
   @spec booster_predict_from_csr(
           booster_reference(),
-          String.t(),
-          String.t(),
-          String.t(),
+          binary(),
+          typestr(),
+          shape(),
+          boolean(),
+          binary(),
+          typestr(),
+          shape(),
+          boolean(),
+          binary(),
+          typestr(),
+          shape(),
+          boolean(),
           integer(),
           String.t(),
           reference() | nil
         ) ::
           tuple()
-  def booster_predict_from_csr(_boster, _indptr, _indices, _values, _ncols, _config, _proxy),
-    do: :erlang.nif_error(:not_implemented)
+  def booster_predict_from_csr(
+        _booster,
+        _indptr_binary,
+        _indptr_typestr,
+        _indptr_shape,
+        _indptr_readonly,
+        _indices_binary,
+        _indices_typestr,
+        _indices_shape,
+        _indices_readonly,
+        _data_binary,
+        _data_typestr,
+        _data_shape,
+        _data_readonly,
+        _ncols,
+        _config,
+        _proxy
+      ),
+      do: :erlang.nif_error(:not_implemented)
 
   @spec proxy_dmatrix_create() :: dmatrix_reference()
   def proxy_dmatrix_create, do: :erlang.nif_error(:not_implemented)

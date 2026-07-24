@@ -127,12 +127,16 @@ defmodule EXGBoost.DMatrix do
     args = Enum.into(Keyword.merge(meta_opts, str_opts), %{})
 
     Enum.each(meta_opts, fn {key, value} ->
-      data_interface = ArrayInterface.from_tensor(value) |> Jason.encode!()
+      arr = ArrayInterface.from_tensor(value)
+      shape = Tuple.to_list(arr.shape)
 
       EXGBoost.NIF.dmatrix_set_info_from_interface(
         dmat.ref,
         Atom.to_string(key),
-        data_interface
+        arr.binary,
+        arr.typestr,
+        shape,
+        arr.readonly
       )
     end)
 
@@ -164,21 +168,34 @@ defmodule EXGBoost.DMatrix do
     # config – JSON configuration string. At the moment it should be an empty document, preserved for future use.
     config = %{} |> Jason.encode!()
 
-    {indptr, data} =
+    {indptr_data, data_data} =
       EXGBoost.NIF.dmatrix_get_quantile_cut(dmat.ref, config)
       |> Internal.unwrap!()
 
-    indptr =
-      Jason.decode!(indptr)
-      |> ArrayInterface.from_map()
-      |> ArrayInterface.get_tensor()
-
-    data =
-      Jason.decode!(data)
-      |> ArrayInterface.from_map()
-      |> ArrayInterface.get_tensor()
+    # NIF now returns maps with :binary, :typestr, :shape - no JSON parsing needed
+    indptr = build_tensor_from_map(indptr_data)
+    data = build_tensor_from_map(data_data)
 
     {indptr, data}
+  end
+
+  defp build_tensor_from_map(%{binary: binary, typestr: typestr, shape: shape}) do
+    # Parse typestr to get Nx type
+    <<_endian::utf8, char_code::binary-size(1), bytes::binary>> = typestr
+    bit_width = String.to_integer(bytes) * 8
+
+    nx_type =
+      case char_code do
+        "i" -> {:s, bit_width}
+        "u" -> {:u, bit_width}
+        "f" -> {:f, bit_width}
+        "c" -> {:c, bit_width}
+      end
+
+    # Convert shape list to tuple
+    shape_tuple = List.to_tuple(shape)
+
+    Nx.from_binary(binary, nx_type) |> Nx.reshape(shape_tuple)
   end
 
   defimpl Inspect do
@@ -311,9 +328,15 @@ defmodule EXGBoost.DMatrix do
     config = Enum.into(config_opts, %{}, fn {key, value} -> {Atom.to_string(key), value} end)
     format = Keyword.fetch!(format_opts, :format)
 
+    arr = ArrayInterface.from_tensor(tensor)
+    shape = Tuple.to_list(arr.shape)
+
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        Jason.encode!(ArrayInterface.from_tensor(tensor)),
+        arr.binary,
+        arr.typestr,
+        shape,
+        arr.readonly,
         Jason.encode!(config)
       )
       |> Internal.unwrap!()
@@ -370,11 +393,28 @@ defmodule EXGBoost.DMatrix do
       raise ArgumentError, "Sparse format must be :csr or :csc"
     end
 
+    indptr_arr = ArrayInterface.from_tensor(indptr)
+    indices_arr = ArrayInterface.from_tensor(indices)
+    data_arr = ArrayInterface.from_tensor(data)
+
+    indptr_shape = Tuple.to_list(indptr_arr.shape)
+    indices_shape = Tuple.to_list(indices_arr.shape)
+    data_shape = Tuple.to_list(data_arr.shape)
+
     dmat =
       EXGBoost.NIF.dmatrix_create_from_sparse(
-        Jason.encode!(ArrayInterface.from_tensor(indptr)),
-        Jason.encode!(ArrayInterface.from_tensor(indices)),
-        Jason.encode!(ArrayInterface.from_tensor(data)),
+        indptr_arr.binary,
+        indptr_arr.typestr,
+        indptr_shape,
+        indptr_arr.readonly,
+        indices_arr.binary,
+        indices_arr.typestr,
+        indices_shape,
+        indices_arr.readonly,
+        data_arr.binary,
+        data_arr.typestr,
+        data_shape,
+        data_arr.readonly,
         n,
         Jason.encode!(config),
         Atom.to_string(format)

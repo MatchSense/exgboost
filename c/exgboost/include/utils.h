@@ -2,6 +2,8 @@
 #define EXGBOOST_UTILS_H
 
 #include <erl_nif.h>
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <xgboost/c_api.h>
@@ -9,6 +11,9 @@
 ErlNifResourceType *DMatrix_RESOURCE_TYPE;
 ErlNifResourceType *Booster_RESOURCE_TYPE;
 typedef uint64_t bst_ulong;
+
+// Initialize atoms (must be called during NIF load)
+void exg_init_atoms(ErlNifEnv *env);
 
 void DMatrix_RESOURCE_TYPE_cleanup(ErlNifEnv *env, void *arg);
 
@@ -22,9 +27,11 @@ ERL_NIF_TERM ok_atom(ErlNifEnv *env);
 
 ERL_NIF_TERM exg_ok(ErlNifEnv *env, ERL_NIF_TERM term);
 
+// Unsafe, to be deprecated in future releases.
 ERL_NIF_TERM exg_get_binary_address(ErlNifEnv *env, int argc,
                                     const ERL_NIF_TERM argv[]);
 
+// Unsafe, to be deprecated in future releases.
 ERL_NIF_TERM exg_get_binary_from_address(ErlNifEnv *env, int argc,
                                          const ERL_NIF_TERM argv[]);
 
@@ -45,5 +52,11 @@ int exg_get_dmatrix_list(ErlNifEnv *env, ERL_NIF_TERM term,
 void exg_free_string_list(char **items, unsigned len);
 
 void exg_free_dmatrix_list(DMatrixHandle *dmats);
+
+// Array Interface helper - builds JSON from components with fresh address
+int exg_build_array_interface_json(ErlNifEnv *env, ERL_NIF_TERM binary_term,
+                                    ERL_NIF_TERM typestr_term, ERL_NIF_TERM shape_term,
+                                    ERL_NIF_TERM readonly_term, char **json_out,
+                                    const char **error_msg);
 
 #endif
