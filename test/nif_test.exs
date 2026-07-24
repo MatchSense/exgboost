@@ -695,42 +695,50 @@ defmodule NifTest do
     test "rejects invalid typestr format" do
       binary = <<1, 2, 3, 4, 5, 6, 7, 8>>
 
-      result = EXGBoost.NIF.dmatrix_create_from_dense(
-        binary,
-        "invalid_typestr",  # Invalid format - should be like "<f4", "<i8", etc.
-        [2],
-        true,
-        config()
-      )
+      result =
+        EXGBoost.NIF.dmatrix_create_from_dense(
+          binary,
+          # Invalid format - should be like "<f4", "<i8", etc.
+          "invalid_typestr",
+          [2],
+          true,
+          config()
+        )
 
       assert {:error, error_msg} = result
       assert to_string(error_msg) =~ "typestr"
     end
 
     test "accepts valid large unsigned shape dimension" do
-      binary = <<1.0::float-32-native, 2.0::float-32-native, 3.0::float-32-native, 4.0::float-32-native>>
+      binary =
+        <<1.0::float-32-native, 2.0::float-32-native, 3.0::float-32-native, 4.0::float-32-native>>
 
-      result = EXGBoost.NIF.dmatrix_create_from_dense(
-        binary,
-        "<f4",
-        [4],  # Valid: 4 elements * 4 bytes = 16 bytes
-        true,
-        config()
-      )
+      result =
+        EXGBoost.NIF.dmatrix_create_from_dense(
+          binary,
+          "<f4",
+          # Valid: 4 elements * 4 bytes = 16 bytes
+          [4],
+          true,
+          config()
+        )
 
       assert {:ok, _dmatrix_ref} = result
     end
 
     test "rejects binary too small for specified shape" do
-      small_binary = <<1.0::float-32-native, 2.0::float-32-native>>  # Only 8 bytes
+      # Only 8 bytes
+      small_binary = <<1.0::float-32-native, 2.0::float-32-native>>
 
-      result = EXGBoost.NIF.dmatrix_create_from_dense(
-        small_binary,
-        "<f4",
-        [100, 100],  # Would require 100*100*4 = 40,000 bytes!
-        true,
-        config()
-      )
+      result =
+        EXGBoost.NIF.dmatrix_create_from_dense(
+          small_binary,
+          "<f4",
+          # Would require 100*100*4 = 40,000 bytes!
+          [100, 100],
+          true,
+          config()
+        )
 
       assert {:error, error_msg} = result
       error_str = to_string(error_msg)
@@ -740,13 +748,15 @@ defmodule NifTest do
     test "rejects invalid readonly value" do
       binary = <<1.0::float-32-native, 2.0::float-32-native>>
 
-      result = EXGBoost.NIF.dmatrix_create_from_dense(
-        binary,
-        "<f4",
-        [2],
-        "not_a_boolean",  # Invalid: string instead of boolean atom
-        config()
-      )
+      result =
+        EXGBoost.NIF.dmatrix_create_from_dense(
+          binary,
+          "<f4",
+          [2],
+          # Invalid: string instead of boolean atom
+          "not_a_boolean",
+          config()
+        )
 
       assert {:error, error_msg} = result
       error_str = to_string(error_msg)
@@ -754,15 +764,18 @@ defmodule NifTest do
     end
 
     test "succeeds with valid parameters" do
-      binary = <<1.0::float-32-native, 2.0::float-32-native, 3.0::float-32-native, 4.0::float-32-native>>
+      binary =
+        <<1.0::float-32-native, 2.0::float-32-native, 3.0::float-32-native, 4.0::float-32-native>>
 
-      result = EXGBoost.NIF.dmatrix_create_from_dense(
-        binary,
-        "<f4",
-        [2, 2],  # 2*2*4 = 16 bytes (matches binary size)
-        true,
-        config()
-      )
+      result =
+        EXGBoost.NIF.dmatrix_create_from_dense(
+          binary,
+          "<f4",
+          # 2*2*4 = 16 bytes (matches binary size)
+          [2, 2],
+          true,
+          config()
+        )
 
       assert {:ok, _dmatrix_ref} = result
     end
@@ -771,19 +784,34 @@ defmodule NifTest do
       binary = <<1.0::float-32-native, 2.0::float-32-native>>
 
       # Little-endian should work
-      assert {:ok, _} = EXGBoost.NIF.dmatrix_create_from_dense(
-        binary, "<f4", [2], true, config()
-      )
+      assert {:ok, _} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 binary,
+                 "<f4",
+                 [2],
+                 true,
+                 config()
+               )
 
       # Non-endian should work
-      assert {:ok, _} = EXGBoost.NIF.dmatrix_create_from_dense(
-        binary, "|i4", [2], true, config()
-      )
+      assert {:ok, _} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 binary,
+                 "|i4",
+                 [2],
+                 true,
+                 config()
+               )
 
       # Invalid endianness marker should fail
-      assert {:error, _} = EXGBoost.NIF.dmatrix_create_from_dense(
-        binary, "?f4", [2], true, config()
-      )
+      assert {:error, _} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 binary,
+                 "?f4",
+                 [2],
+                 true,
+                 config()
+               )
     end
 
     test "validates shape with overflow protection" do
@@ -792,13 +820,15 @@ defmodule NifTest do
       # Extremely large shape that would overflow
       # Note: This might not fail if XGBoost itself fails first,
       # but our validation should catch reasonable overflows
-      result = EXGBoost.NIF.dmatrix_create_from_dense(
-        binary,
-        "<f4",
-        [1_000_000, 1_000_000],  # Would require 4TB!
-        true,
-        config()
-      )
+      result =
+        EXGBoost.NIF.dmatrix_create_from_dense(
+          binary,
+          "<f4",
+          # Would require 4TB!
+          [1_000_000, 1_000_000],
+          true,
+          config()
+        )
 
       assert {:error, _error_msg} = result
     end
@@ -807,23 +837,43 @@ defmodule NifTest do
       binary = <<1.0::float-32-native, 2.0::float-32-native>>
 
       # Integer should fail
-      assert {:error, _} = EXGBoost.NIF.dmatrix_create_from_dense(
-        binary, "<f4", [2], 1, config()
-      )
+      assert {:error, _} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 binary,
+                 "<f4",
+                 [2],
+                 1,
+                 config()
+               )
 
       # String should fail
-      assert {:error, _} = EXGBoost.NIF.dmatrix_create_from_dense(
-        binary, "<f4", [2], "true", config()
-      )
+      assert {:error, _} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 binary,
+                 "<f4",
+                 [2],
+                 "true",
+                 config()
+               )
 
       # Only true/false atoms should work
-      assert {:ok, _} = EXGBoost.NIF.dmatrix_create_from_dense(
-        binary, "<f4", [2], true, config()
-      )
+      assert {:ok, _} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 binary,
+                 "<f4",
+                 [2],
+                 true,
+                 config()
+               )
 
-      assert {:ok, _} = EXGBoost.NIF.dmatrix_create_from_dense(
-        binary, "<f4", [2], false, config()
-      )
+      assert {:ok, _} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 binary,
+                 "<f4",
+                 [2],
+                 false,
+                 config()
+               )
     end
   end
 

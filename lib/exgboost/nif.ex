@@ -240,12 +240,14 @@ defmodule EXGBoost.NIF do
   def dmatrix_save_binary(_handle, _fname, _silent),
     do: :erlang.nif_error(:not_implemented)
 
-  @doc deprecated: "Known to be unsafe, to be removed in future releases. Prefer NIF owning the address stability and lifetime guarantee."
+  @doc deprecated:
+         "Known to be unsafe, to be removed in future releases. Prefer NIF owning the address stability and lifetime guarantee."
   @spec get_binary_address(dmatrix_reference()) :: exgboost_return_type(integer)
   def get_binary_address(_handle),
     do: :erlang.nif_error(:not_implemented)
 
-  @doc deprecated: "Known to be unsafe, to be removed in future releases. Prefer NIF owning the address stability and lifetime guarantee."
+  @doc deprecated:
+         "Known to be unsafe, to be removed in future releases. Prefer NIF owning the address stability and lifetime guarantee."
   @spec get_binary_from_address(integer(), integer()) :: exgboost_return_type(binary())
   def get_binary_from_address(_address, _size), do: :erlang.nif_error(:not_implemented)
 
@@ -364,7 +366,15 @@ defmodule EXGBoost.NIF do
   def booster_predict_from_dmatrix(_boster, _dmatrix, _config),
     do: :erlang.nif_error(:not_implemented)
 
-  @spec booster_predict_from_dense(booster_reference(), binary(), String.t(), [integer()], boolean(), String.t(), reference() | nil) ::
+  @spec booster_predict_from_dense(
+          booster_reference(),
+          binary(),
+          String.t(),
+          [integer()],
+          boolean(),
+          String.t(),
+          reference() | nil
+        ) ::
           tuple()
   def booster_predict_from_dense(_booster, _binary, _typestr, _shape, _readonly, _config, _proxy),
     do: :erlang.nif_error(:not_implemented)
@@ -406,7 +416,7 @@ defmodule EXGBoost.NIF do
         _config,
         _proxy
       ),
-    do: :erlang.nif_error(:not_implemented)
+      do: :erlang.nif_error(:not_implemented)
 
   @spec proxy_dmatrix_create() :: dmatrix_reference()
   def proxy_dmatrix_create, do: :erlang.nif_error(:not_implemented)

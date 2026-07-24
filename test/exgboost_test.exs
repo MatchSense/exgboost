@@ -401,7 +401,8 @@ defmodule EXGBoostTest do
       EXGBoost.ArrayInterface.from_map(%{
         "typestr" => "<f4",
         "shape" => [2, 2],
-        "data" => [123, true],  # Address is ignored, only readonly is extracted
+        # Address is ignored, only readonly is extracted
+        "data" => [123, true],
         "version" => 3,
         "strides" => nil,
         "descr" => [["", "<f4"]]

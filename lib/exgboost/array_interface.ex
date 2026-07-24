@@ -134,7 +134,8 @@ defmodule EXGBoost.ArrayInterface do
   end
 
   @spec get_tensor(EXGBoost.ArrayInterface.t()) :: Nx.Tensor.t()
-  def get_tensor(%__MODULE__{binary: binary, typestr: typestr, shape: shape}) when is_binary(binary) do
+  def get_tensor(%__MODULE__{binary: binary, typestr: typestr, shape: shape})
+      when is_binary(binary) do
     # Parse typestr to get Nx type
     <<_endian::utf8, char_code::binary-size(1), bytes::binary>> = typestr
     bit_width = String.to_integer(bytes) * 8
