@@ -9,12 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Comprehensive safety validation tests in `test/nif_test.exs` covering:
+- Comprehensive safety validation tests added in `test/nif_test.exs` covering:
   - Invalid typestr format rejection
   - Binary size validation preventing buffer overflows
   - Boolean type strictness (only `true`/`false` atoms accepted)
   - Shape overflow protection for extremely large dimensions
   - Endianness marker validation
+- `CONTRIBUTING.md` - developer guide with DO's and DON'Ts for NIF development, safety requirements, and testing  procedures.
 
 ### Changed
 
