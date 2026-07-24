@@ -709,40 +709,76 @@ defmodule NifTest do
       assert to_string(error_msg) =~ "typestr"
     end
 
-    test "accepts valid large unsigned shape dimension" do
+    test "accepts a binary matching the declared shape and type" do
       binary =
-        <<1.0::float-32-native, 2.0::float-32-native, 3.0::float-32-native, 4.0::float-32-native>>
+        <<1.0::float-32-little, 2.0::float-32-little, 3.0::float-32-little, 4.0::float-32-little>>
 
-      result =
-        EXGBoost.NIF.dmatrix_create_from_dense(
-          binary,
-          "<f4",
-          # Valid: 4 elements * 4 bytes = 16 bytes
-          [4],
-          true,
-          config()
-        )
-
-      assert {:ok, _dmatrix_ref} = result
+      assert {:ok, _dmatrix_ref} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 binary,
+                 "<f4",
+                 [1, 4],
+                 true,
+                 config()
+               )
     end
 
-    test "rejects binary too small for specified shape" do
-      # Only 8 bytes
-      small_binary = <<1.0::float-32-native, 2.0::float-32-native>>
+    test "rejects a binary smaller than the declared shape requires" do
+      binary =
+        <<1.0::float-32-little, 2.0::float-32-little>>
 
-      result =
-        EXGBoost.NIF.dmatrix_create_from_dense(
-          small_binary,
-          "<f4",
-          # Would require 100*100*4 = 40,000 bytes!
-          [100, 100],
-          true,
-          config()
-        )
+      assert {:error, error_msg} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 binary,
+                 "<f4",
+                 [100, 100],
+                 true,
+                 config()
+               )
 
-      assert {:error, error_msg} = result
-      error_str = to_string(error_msg)
-      assert error_str =~ "too small" or error_str =~ "size"
+      assert to_string(error_msg) ==
+               "Binary is too small for the specified shape and type"
+    end
+
+    test "rejects shape size multiplication overflow" do
+      binary = <<0>>
+
+      assert {:error, error_msg} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 binary,
+                 "|u1",
+                 [18_446_744_073_709_551_615, 2],
+                 true,
+                 config()
+               )
+
+      assert to_string(error_msg) =~ "overflow"
+    end
+
+    test "rejects negative shape dimensions" do
+      assert {:error, error_msg} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 <<0.0::float-32-little>>,
+                 "<f4",
+                 [-1],
+                 true,
+                 config()
+               )
+
+      assert to_string(error_msg) =~ "non-negative"
+    end
+
+    test "rejects malformed readonly value" do
+      assert {:error, error_msg} =
+               EXGBoost.NIF.dmatrix_create_from_dense(
+                 <<0.0::float-32-little>>,
+                 "<f4",
+                 [1, 1],
+                 :yes,
+                 config()
+               )
+
+      assert to_string(error_msg) =~ "boolean"
     end
 
     test "rejects invalid readonly value" do
