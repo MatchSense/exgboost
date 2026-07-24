@@ -671,7 +671,7 @@ defmodule NifTest do
     test "rejects invalid readonly value" do
       array_interface =
         struct!(EXGBoost.ArrayInterface, %{
-          binary: <<1.0::float-32-native, 2.0::float-32-native>>,
+          binary: <<1.0::float-32-little, 2.0::float-32-little>>,
           typestr: "<f4",
           shape: {2},
           # Invalid: string instead of boolean atom
@@ -693,8 +693,8 @@ defmodule NifTest do
       array_interface =
         struct!(EXGBoost.ArrayInterface, %{
           binary:
-            <<1.0::float-32-native, 2.0::float-32-native, 3.0::float-32-native,
-              4.0::float-32-native>>,
+            <<1.0::float-32-little, 2.0::float-32-little, 3.0::float-32-little,
+              4.0::float-32-little>>,
           typestr: "<f4",
           shape: {2, 2},
           readonly: true
@@ -713,7 +713,7 @@ defmodule NifTest do
       # Little-endian with float (4 bytes)
       array_interface =
         struct!(EXGBoost.ArrayInterface, %{
-          binary: <<1.0::float-32-native, 2.0::float-32-native>>,
+          binary: <<1.0::float-32-little, 2.0::float-32-little>>,
           typestr: "<f4",
           shape: {2},
           readonly: true
@@ -764,7 +764,7 @@ defmodule NifTest do
     test "validates shape with overflow protection" do
       array_interface =
         struct!(EXGBoost.ArrayInterface, %{
-          binary: <<1.0::float-32-native, 2.0::float-32-native>>,
+          binary: <<1.0::float-32-little, 2.0::float-32-little>>,
           typestr: "<f4",
           # Would require 4TB!
           shape: {1_000_000, 1_000_000},
@@ -786,7 +786,7 @@ defmodule NifTest do
     test "strict boolean validation requires atoms" do
       array_interface =
         struct!(EXGBoost.ArrayInterface, %{
-          binary: <<1.0::float-32-native, 2.0::float-32-native>>,
+          binary: <<1.0::float-32-little, 2.0::float-32-little>>,
           typestr: "<f4",
           shape: {2},
           readonly: true
