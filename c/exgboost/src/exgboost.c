@@ -43,14 +43,14 @@ static ErlNifFunc nif_funcs[] = {
     {"dmatrix_create_from_uri", 1, EXGDMatrixCreateFromURI,
      ERL_NIF_DIRTY_JOB_IO_BOUND},
     {"dmatrix_create_from_mat", 4, EXGDMatrixCreateFromMat},
-    {"dmatrix_create_from_sparse", 15, EXGDMatrixCreateFromSparse},
-    {"dmatrix_create_from_dense", 5, EXGDMatrixCreateFromDense},
+    {"dmatrix_create_from_sparse", 6, EXGDMatrixCreateFromSparse},
+    {"dmatrix_create_from_dense", 2, EXGDMatrixCreateFromDense},
     {"dmatrix_set_str_feature_info", 3, EXGDMatrixSetStrFeatureInfo},
     {"dmatrix_get_str_feature_info", 2, EXGDMatrixGetStrFeatureInfo},
     {"dmatrix_num_row", 1, EXGDMatrixNumRow},
     {"dmatrix_num_col", 1, EXGDMatrixNumCol},
     {"dmatrix_num_non_missing", 1, EXGDMatrixNumNonMissing},
-    {"dmatrix_set_info_from_interface", 6, EXGDMatrixSetInfoFromInterface},
+    {"dmatrix_set_info_from_interface", 3, EXGDMatrixSetInfoFromInterface},
     {"dmatrix_save_binary", 3, EXGDMatrixSaveBinary},
 
     // Unsafe, to be deprecated in future releases.

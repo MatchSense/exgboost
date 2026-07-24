@@ -53,6 +53,14 @@ void exg_free_string_list(char **items, unsigned len);
 
 void exg_free_dmatrix_list(DMatrixHandle *dmats);
 
+// Array Interface helper - extracts components from tuple {binary, typestr, shape, readonly}
+int exg_get_array_interface_tuple(ErlNifEnv *env, ERL_NIF_TERM tuple_term,
+                                   ERL_NIF_TERM *binary_out,
+                                   ERL_NIF_TERM *typestr_out,
+                                   ERL_NIF_TERM *shape_out,
+                                   ERL_NIF_TERM *readonly_out,
+                                   const char **error_msg);
+
 // Array Interface helper - builds JSON from components with fresh address
 int exg_build_array_interface_json(ErlNifEnv *env, ERL_NIF_TERM binary_term,
                                     ERL_NIF_TERM typestr_term, ERL_NIF_TERM shape_term,

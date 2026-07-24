@@ -142,44 +142,69 @@ ERL_NIF_TERM EXGDMatrixCreateFromSparse(ErlNifEnv *env, int argc,
   char *indices_interface = NULL;
   char *data_interface = NULL;
   const char *error_msg = NULL;
+  ERL_NIF_TERM indptr_binary, indptr_typestr, indptr_shape, indptr_readonly;
+  ERL_NIF_TERM indices_binary, indices_typestr, indices_shape, indices_readonly;
+  ERL_NIF_TERM data_binary, data_typestr, data_shape, data_readonly;
   int n = 0;
   char *config = NULL;
   char *format = NULL;
   DMatrixHandle handle;
   ERL_NIF_TERM ret = 0;
 
-  if (argc != 15) {
+  if (argc != 6) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
 
-  // Extract ArrayInterfaces with fresh addresses: (binary, typestr, shape, readonly) per array
-  if (!exg_build_array_interface_json(env, argv[0], argv[1], argv[2], argv[3], &indptr_interface, &error_msg)) {
-    ret = exg_error(env, error_msg ? error_msg : "Failed to extract indptr ArrayInterface");
+  // Extract ArrayInterface tuples: {binary, typestr, shape, readonly}
+  if (!exg_get_array_interface_tuple(env, argv[0], &indptr_binary, &indptr_typestr,
+                                      &indptr_shape, &indptr_readonly, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract indptr ArrayInterface tuple");
     goto END;
   }
 
-  if (!exg_build_array_interface_json(env, argv[4], argv[5], argv[6], argv[7], &indices_interface, &error_msg)) {
-    ret = exg_error(env, error_msg ? error_msg : "Failed to extract indices ArrayInterface");
+  if (!exg_get_array_interface_tuple(env, argv[1], &indices_binary, &indices_typestr,
+                                      &indices_shape, &indices_readonly, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract indices ArrayInterface tuple");
     goto END;
   }
 
-  if (!exg_build_array_interface_json(env, argv[8], argv[9], argv[10], argv[11], &data_interface, &error_msg)) {
-    ret = exg_error(env, error_msg ? error_msg : "Failed to extract data ArrayInterface");
+  if (!exg_get_array_interface_tuple(env, argv[2], &data_binary, &data_typestr,
+                                      &data_shape, &data_readonly, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract data ArrayInterface tuple");
     goto END;
   }
 
-  if (!enif_get_int(env, argv[12], &n)) {
+  // Build JSON from extracted components
+  if (!exg_build_array_interface_json(env, indptr_binary, indptr_typestr, indptr_shape,
+                                       indptr_readonly, &indptr_interface, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to build indptr ArrayInterface");
+    goto END;
+  }
+
+  if (!exg_build_array_interface_json(env, indices_binary, indices_typestr, indices_shape,
+                                       indices_readonly, &indices_interface, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to build indices ArrayInterface");
+    goto END;
+  }
+
+  if (!exg_build_array_interface_json(env, data_binary, data_typestr, data_shape,
+                                       data_readonly, &data_interface, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to build data ArrayInterface");
+    goto END;
+  }
+
+  if (!enif_get_int(env, argv[3], &n)) {
     ret = exg_error(env, "Ncol must be an integer");
     goto END;
   }
 
-  if (!exg_get_string(env, argv[13], &config)) {
+  if (!exg_get_string(env, argv[4], &config)) {
     ret = exg_error(env, "Config must be a string");
     goto END;
   }
 
-  if (!exg_get_string(env, argv[14], &format)) {
+  if (!exg_get_string(env, argv[5], &format)) {
     ret = exg_error(env, "Format must be a string");
     goto END;
   }
@@ -227,22 +252,31 @@ ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv *env, int argc,
   int result = -1;
   char *array_interface = NULL;
   const char *error_msg = NULL;
+  ERL_NIF_TERM array_binary, array_typestr, array_shape, array_readonly;
   char *config = NULL;
   DMatrixHandle out;
   ERL_NIF_TERM ret = 0;
 
-  if (argc != 5) {
+  if (argc != 2) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
 
-  // Build ArrayInterface JSON from components: (binary, typestr, shape, readonly)
-  if (!exg_build_array_interface_json(env, argv[0], argv[1], argv[2], argv[3], &array_interface, &error_msg)) {
-    ret = exg_error(env, error_msg ? error_msg : "Failed to extract ArrayInterface");
+  // Extract ArrayInterface tuple: {binary, typestr, shape, readonly}
+  if (!exg_get_array_interface_tuple(env, argv[0], &array_binary, &array_typestr,
+                                      &array_shape, &array_readonly, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract ArrayInterface tuple");
     goto END;
   }
 
-  if (!exg_get_string(env, argv[4], &config)) {
+  // Build ArrayInterface JSON from components
+  if (!exg_build_array_interface_json(env, array_binary, array_typestr, array_shape,
+                                       array_readonly, &array_interface, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to build ArrayInterface");
+    goto END;
+  }
+
+  if (!exg_get_string(env, argv[1], &config)) {
     ret = exg_error(env, "Config must be a JSON-Encoded string");
     goto END;
   }
@@ -518,10 +552,11 @@ ERL_NIF_TERM EXGDMatrixSetInfoFromInterface(ErlNifEnv *env, int argc,
   char *field = NULL;
   char *data_interface = NULL;
   const char *error_msg = NULL;
+  ERL_NIF_TERM data_binary, data_typestr, data_shape, data_readonly;
   int result = -1;
   ERL_NIF_TERM ret = 0;
 
-  if (argc != 6) {
+  if (argc != 3) {
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
@@ -537,9 +572,17 @@ ERL_NIF_TERM EXGDMatrixSetInfoFromInterface(ErlNifEnv *env, int argc,
     goto END;
   }
 
-  // Build ArrayInterface JSON from components: (binary, typestr, shape, readonly)
-  if (!exg_build_array_interface_json(env, argv[2], argv[3], argv[4], argv[5], &data_interface, &error_msg)) {
-    ret = exg_error(env, error_msg ? error_msg : "Failed to extract data ArrayInterface");
+  // Extract ArrayInterface tuple: {binary, typestr, shape, readonly}
+  if (!exg_get_array_interface_tuple(env, argv[2], &data_binary, &data_typestr,
+                                      &data_shape, &data_readonly, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to extract ArrayInterface tuple");
+    goto END;
+  }
+
+  // Build ArrayInterface JSON from components
+  if (!exg_build_array_interface_json(env, data_binary, data_typestr, data_shape,
+                                       data_readonly, &data_interface, &error_msg)) {
+    ret = exg_error(env, error_msg ? error_msg : "Failed to build data ArrayInterface");
     goto END;
   }
 

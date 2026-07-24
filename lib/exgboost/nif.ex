@@ -18,6 +18,7 @@ defmodule EXGBoost.NIF do
 
   @type typestr :: String.t()
   @type shape :: [integer()]
+  @type array_interface_tuple :: {binary(), typestr(), shape(), boolean()}
   @type dmatrix_reference :: reference()
   @type booster_reference :: reference()
   @type exgboost_return_type(return_type) :: {:ok, return_type} | {:error, String.t()}
@@ -129,18 +130,9 @@ defmodule EXGBoost.NIF do
     do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_create_from_sparse(
-          binary(),
-          typestr(),
-          shape(),
-          boolean(),
-          binary(),
-          typestr(),
-          shape(),
-          boolean(),
-          binary(),
-          typestr(),
-          shape(),
-          boolean(),
+          array_interface_tuple(),
+          array_interface_tuple(),
+          array_interface_tuple(),
           integer(),
           String.t(),
           String.t()
@@ -148,50 +140,35 @@ defmodule EXGBoost.NIF do
   @doc """
   Create a DMatrix from Sparse matrix Array Interface components (CSR / CSC)
 
-  Arguments for each array (indptr, indices, data):
-  - binary: The raw tensor data
-  - typestr: Data type string (e.g., \"<i4\", \"<f4\")
-  - shape: List of dimensions
-  - readonly: Boolean indicating if data is read-only
-
-  Plus:
+  Arguments:
+  - indptr_tuple: {binary, typestr, shape, readonly} for indptr array
+  - indices_tuple: {binary, typestr, shape, readonly} for indices array
+  - data_tuple: {binary, typestr, shape, readonly} for data array
   - n: Number of columns (CSR) or rows (CSC)
   - config: JSON configuration string
   - format: \"csr\" or \"csc\"
   """
   def dmatrix_create_from_sparse(
-        _indptr_binary,
-        _indptr_typestr,
-        _indptr_shape,
-        _indptr_readonly,
-        _indices_binary,
-        _indices_typestr,
-        _indices_shape,
-        _indices_readonly,
-        _data_binary,
-        _data_typestr,
-        _data_shape,
-        _data_readonly,
+        _indptr_tuple,
+        _indices_tuple,
+        _data_tuple,
         _n,
         _config,
         _format
       ),
       do: :erlang.nif_error(:not_implemented)
 
-  @spec dmatrix_create_from_dense(binary(), typestr(), shape(), boolean(), String.t()) ::
+  @spec dmatrix_create_from_dense(array_interface_tuple(), String.t()) ::
           exgboost_return_type(dmatrix_reference())
   @doc """
   Create a DMatrix from Array Interface components
   https://numpy.org/doc/stable/reference/arrays.interface.html
 
   Arguments:
-  - binary: The raw tensor data
-  - typestr: Data type string (e.g., "<f4")
-  - shape: List of dimensions
-  - readonly: Boolean indicating if data is read-only
+  - array_tuple: {binary, typestr, shape, readonly} for the array
   - config: JSON configuration string
   """
-  def dmatrix_create_from_dense(_binary, _typestr, _shape, _readonly, _config),
+  def dmatrix_create_from_dense(_array_tuple, _config),
     do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_get_str_feature_info(dmatrix_reference(), String.t()) ::
@@ -216,23 +193,17 @@ defmodule EXGBoost.NIF do
   @spec dmatrix_set_info_from_interface(
           dmatrix_reference(),
           String.t(),
-          binary(),
-          typestr(),
-          shape(),
-          boolean()
+          array_interface_tuple()
         ) :: :ok | {:error, String.t()}
   @doc """
   Set the info from Array Interface components
-  Valid field names are:
-  * label
-  * weight
-  * base_margin
-  * group
-  * label_lower_bound
-  * label_upper_bound
-  * feature_weights
+
+  Arguments:
+  - handle: DMatrix reference
+  - field: Field name (label, weight, base_margin, group, label_lower_bound, label_upper_bound, feature_weights)
+  - data_tuple: {binary, typestr, shape, readonly} for the data array
   """
-  def dmatrix_set_info_from_interface(_handle, _field, _binary, _typestr, _shape, _readonly),
+  def dmatrix_set_info_from_interface(_handle, _field, _data_tuple),
     do: :erlang.nif_error(:not_implemented)
 
   @spec dmatrix_save_binary(dmatrix_reference(), String.t(), integer()) ::

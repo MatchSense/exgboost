@@ -444,8 +444,39 @@ static int exg_validate_shape_and_size(ErlNifEnv *env, ERL_NIF_TERM shape_term,
   return 1;
 }
 
-// Helper to build Array Interface JSON from components with fresh address
-// Returns 1 on success, 0 on failure
+// Helper: Extract Array Interface components from tuple {binary, typestr, shape, readonly}
+int exg_get_array_interface_tuple(ErlNifEnv *env, ERL_NIF_TERM tuple_term,
+                                   ERL_NIF_TERM *binary_out,
+                                   ERL_NIF_TERM *typestr_out,
+                                   ERL_NIF_TERM *shape_out,
+                                   ERL_NIF_TERM *readonly_out,
+                                   const char **error_msg) {
+  int arity = 0;
+  const ERL_NIF_TERM *tuple_elements = NULL;
+
+  *error_msg = NULL;
+
+  // Check that it's a tuple
+  if (!enif_get_tuple(env, tuple_term, &arity, &tuple_elements)) {
+    *error_msg = "ArrayInterface must be a tuple";
+    return 0;
+  }
+
+  // Verify arity is exactly 4
+  if (arity != 4) {
+    *error_msg = "ArrayInterface tuple must have 4 elements: {binary, typestr, shape, readonly}";
+    return 0;
+  }
+
+  // Extract components
+  *binary_out = tuple_elements[0];
+  *typestr_out = tuple_elements[1];
+  *shape_out = tuple_elements[2];
+  *readonly_out = tuple_elements[3];
+
+  return 1;
+}
+
 // Helper to build Array Interface JSON from components with fresh address
 // Returns 1 on success, 0 on failure
 int exg_build_array_interface_json(ErlNifEnv *env, ERL_NIF_TERM binary_term,

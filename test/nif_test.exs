@@ -2,7 +2,7 @@ defmodule NifTest do
   use ExUnit.Case, async: true
 
   import EXGBoost.Internal
-  import EXGBoost.ArrayInterface, only: [from_tensor: 1]
+  import EXGBoost.ArrayInterface, only: [from_tensor: 1, to_tuple: 1]
 
   test "exgboost_version" do
     assert EXGBoost.NIF.xgboost_version() |> unwrap!() != :error
@@ -90,23 +90,14 @@ defmodule NifTest do
         1.0
       ])
 
-    indptr_arr = from_tensor(indptr)
-    indices_arr = from_tensor(indices)
-    data_arr = from_tensor(data)
+    indptr_arr_tuple = from_tensor(indptr) |> to_tuple()
+    indices_arr_tuple = from_tensor(indices) |> to_tuple()
+    data_arr_tuple = from_tensor(data) |> to_tuple()
 
     assert EXGBoost.NIF.dmatrix_create_from_sparse(
-             indptr_arr.binary,
-             indptr_arr.typestr,
-             Tuple.to_list(indptr_arr.shape),
-             indptr_arr.readonly,
-             indices_arr.binary,
-             indices_arr.typestr,
-             Tuple.to_list(indices_arr.shape),
-             indices_arr.readonly,
-             data_arr.binary,
-             data_arr.typestr,
-             Tuple.to_list(data_arr.shape),
-             data_arr.readonly,
+             indptr_arr_tuple,
+             indices_arr_tuple,
+             data_arr_tuple,
              ncols,
              config(),
              "csr"
@@ -115,39 +106,20 @@ defmodule NifTest do
              :error
 
     assert EXGBoost.NIF.dmatrix_create_from_sparse(
-             indptr_arr.binary,
-             indptr_arr.typestr,
-             Tuple.to_list(indptr_arr.shape),
-             indptr_arr.readonly,
-             indices_arr.binary,
-             indices_arr.typestr,
-             Tuple.to_list(indices_arr.shape),
-             indices_arr.readonly,
-             data_arr.binary,
-             data_arr.typestr,
-             Tuple.to_list(data_arr.shape),
-             data_arr.readonly,
+             indptr_arr_tuple,
+             indices_arr_tuple,
+             data_arr_tuple,
              ncols,
              config(),
              "csc"
            )
-           |> unwrap!() !=
-             :error
+           |> unwrap!() != :error
 
     {status, _} =
       EXGBoost.NIF.dmatrix_create_from_sparse(
-        indptr_arr.binary,
-        indptr_arr.typestr,
-        Tuple.to_list(indptr_arr.shape),
-        indptr_arr.readonly,
-        indices_arr.binary,
-        indices_arr.typestr,
-        Tuple.to_list(indices_arr.shape),
-        indices_arr.readonly,
-        data_arr.binary,
-        data_arr.typestr,
-        Tuple.to_list(data_arr.shape),
-        data_arr.readonly,
+        indptr_arr_tuple,
+        indices_arr_tuple,
+        data_arr_tuple,
         ncols,
         config(),
         "csa"
@@ -159,13 +131,9 @@ defmodule NifTest do
   test "dmatrix_create_from_dense" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     arr = from_tensor(mat)
-    shape = Tuple.to_list(arr.shape)
 
     assert EXGBoost.NIF.dmatrix_create_from_dense(
-             arr.binary,
-             arr.typestr,
-             shape,
-             arr.readonly,
+             to_tuple(arr),
              config()
            )
            |> unwrap!() != :error
@@ -174,14 +142,10 @@ defmodule NifTest do
   test "dmatrix_set_str_feature_info" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     arr = from_tensor(mat)
-    shape = Tuple.to_list(arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        arr.binary,
-        arr.typestr,
-        shape,
-        arr.readonly,
+        to_tuple(arr),
         config()
       )
       |> unwrap!()
@@ -196,14 +160,10 @@ defmodule NifTest do
   test "dmatrix_get_str_feature_info" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -220,14 +180,10 @@ defmodule NifTest do
   test "dmatrix_num_row" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -238,14 +194,10 @@ defmodule NifTest do
   test "dmatrix_num_col" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -256,14 +208,10 @@ defmodule NifTest do
   test "dmatrix_num_non_missing" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -275,38 +223,27 @@ defmodule NifTest do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
     labels = Nx.tensor([1.0, 0.0])
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
 
     label_arr = from_tensor(labels)
-    label_shape = Tuple.to_list(label_arr.shape)
 
     assert EXGBoost.NIF.dmatrix_set_info_from_interface(
              dmat,
              ~c"label",
-             label_arr.binary,
-             label_arr.typestr,
-             label_shape,
-             label_arr.readonly
+             to_tuple(label_arr)
            ) ==
              :ok
 
     assert EXGBoost.NIF.dmatrix_set_info_from_interface(
              dmat,
              ~c"unsupported",
-             label_arr.binary,
-             label_arr.typestr,
-             label_shape,
-             label_arr.readonly
+             to_tuple(label_arr)
            ) != :ok
   end
 
@@ -314,28 +251,20 @@ defmodule NifTest do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
     labels = Nx.tensor([1.0, 0.0])
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
 
     label_arr = from_tensor(labels)
-    label_shape = Tuple.to_list(label_arr.shape)
 
     EXGBoost.NIF.dmatrix_set_info_from_interface(
       dmat,
       ~c"label",
-      label_arr.binary,
-      label_arr.typestr,
-      label_shape,
-      label_arr.readonly
+      to_tuple(label_arr)
     )
 
     path = Path.join(System.tmp_dir!(), "test.buffer") |> String.to_charlist()
@@ -346,28 +275,20 @@ defmodule NifTest do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
     weights = Nx.tensor([1.0, 0.0])
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
 
     weights_arr = from_tensor(weights)
-    weights_shape = Tuple.to_list(weights_arr.shape)
 
     EXGBoost.NIF.dmatrix_set_info_from_interface(
       dmat,
       ~c"feature_weights",
-      weights_arr.binary,
-      weights_arr.typestr,
-      weights_shape,
-      weights_arr.readonly
+      to_tuple(weights_arr)
     )
 
     assert EXGBoost.NIF.dmatrix_get_float_info(dmat, ~c"feature_weights") |> unwrap!() ==
@@ -377,14 +298,10 @@ defmodule NifTest do
   test "dmatrix_get_data_as_csr" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -395,14 +312,10 @@ defmodule NifTest do
   test "dmatrix_slice" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -440,26 +353,17 @@ defmodule NifTest do
     mat2 = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
     mat2_arr = from_tensor(mat2)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
 
-    mat2_shape = Tuple.to_list(mat2_arr.shape)
-
     dmat2 =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat2_arr.binary,
-        mat2_arr.typestr,
-        mat2_shape,
-        mat2_arr.readonly,
+        to_tuple(mat2_arr),
         config()
       )
       |> unwrap!()
@@ -472,14 +376,10 @@ defmodule NifTest do
   test "booster_get_num_feature" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -491,14 +391,10 @@ defmodule NifTest do
   test "booster_set_str_feature_info" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -515,14 +411,10 @@ defmodule NifTest do
   test "booster_get_str_feature_info" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -542,14 +434,10 @@ defmodule NifTest do
     # TODO: Make more robust test. This will just return an empty list
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -563,14 +451,10 @@ defmodule NifTest do
   test "save model" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -589,14 +473,10 @@ defmodule NifTest do
   test "load model" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -615,14 +495,10 @@ defmodule NifTest do
   test "booster serialize" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -634,14 +510,10 @@ defmodule NifTest do
   test "booster deserialize" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -655,14 +527,10 @@ defmodule NifTest do
   test "save booster config" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -674,14 +542,10 @@ defmodule NifTest do
   test "load booster config" do
     mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     mat_arr = from_tensor(mat)
-    mat_shape = Tuple.to_list(mat_arr.shape)
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        mat_arr.binary,
-        mat_arr.typestr,
-        mat_shape,
-        mat_arr.readonly,
+        to_tuple(mat_arr),
         config()
       )
       |> unwrap!()
@@ -693,15 +557,17 @@ defmodule NifTest do
 
   describe "Array Interface safety validations" do
     test "rejects invalid typestr format" do
-      binary = <<1, 2, 3, 4, 5, 6, 7, 8>>
+      array_interface =
+        struct!(EXGBoost.ArrayInterface, %{
+          binary: <<1, 2, 3, 4, 5, 6, 7, 8>>,
+          typestr: "invalid_typestr",
+          shape: {2},
+          readonly: true
+        })
 
       result =
         EXGBoost.NIF.dmatrix_create_from_dense(
-          binary,
-          # Invalid format - should be like "<f4", "<i8", etc.
-          "invalid_typestr",
-          [2],
-          true,
+          to_tuple(array_interface),
           config()
         )
 
@@ -712,29 +578,35 @@ defmodule NifTest do
     end
 
     test "accepts a binary matching the declared shape and type" do
-      binary =
-        <<1.0::float-32-little, 2.0::float-32-little, 3.0::float-32-little, 4.0::float-32-little>>
+      array_interface =
+        struct!(EXGBoost.ArrayInterface, %{
+          binary:
+            <<1.0::float-32-little, 2.0::float-32-little, 3.0::float-32-little,
+              4.0::float-32-little>>,
+          typestr: "<f4",
+          shape: {1, 4},
+          readonly: true
+        })
 
       assert {:ok, _dmatrix_ref} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary,
-                 "<f4",
-                 [1, 4],
-                 true,
+                 to_tuple(array_interface),
                  config()
                )
     end
 
     test "rejects a binary smaller than the declared shape requires" do
-      binary =
-        <<1.0::float-32-little, 2.0::float-32-little>>
+      array_interface =
+        struct!(EXGBoost.ArrayInterface, %{
+          binary: <<1.0::float-32-little, 2.0::float-32-little>>,
+          typestr: "<f4",
+          shape: {100, 100},
+          readonly: true
+        })
 
       assert {:error, error_msg} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary,
-                 "<f4",
-                 [100, 100],
-                 true,
+                 to_tuple(array_interface),
                  config()
                )
 
@@ -743,14 +615,17 @@ defmodule NifTest do
     end
 
     test "rejects shape size multiplication overflow" do
-      binary = <<0>>
+      array_interface =
+        struct!(EXGBoost.ArrayInterface, %{
+          binary: <<0>>,
+          typestr: "|u1",
+          shape: {18_446_744_073_709_551_615, 2},
+          readonly: true
+        })
 
       assert {:error, error_msg} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary,
-                 "|u1",
-                 [18_446_744_073_709_551_615, 2],
-                 true,
+                 to_tuple(array_interface),
                  config()
                )
 
@@ -758,12 +633,17 @@ defmodule NifTest do
     end
 
     test "rejects negative shape dimensions" do
+      array_interface =
+        struct!(EXGBoost.ArrayInterface, %{
+          binary: <<0.0::float-32-little>>,
+          typestr: "<f4",
+          shape: {-1},
+          readonly: true
+        })
+
       assert {:error, error_msg} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 <<0.0::float-32-little>>,
-                 "<f4",
-                 [-1],
-                 true,
+                 to_tuple(array_interface),
                  config()
                )
 
@@ -771,12 +651,17 @@ defmodule NifTest do
     end
 
     test "rejects malformed readonly value" do
+      array_interface =
+        struct!(EXGBoost.ArrayInterface, %{
+          binary: <<0.0::float-32-little>>,
+          typestr: "<f4",
+          shape: {1, 1},
+          readonly: :yes
+        })
+
       assert {:error, error_msg} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 <<0.0::float-32-little>>,
-                 "<f4",
-                 [1, 1],
-                 :yes,
+                 to_tuple(array_interface),
                  config()
                )
 
@@ -784,15 +669,18 @@ defmodule NifTest do
     end
 
     test "rejects invalid readonly value" do
-      binary = <<1.0::float-32-native, 2.0::float-32-native>>
+      array_interface =
+        struct!(EXGBoost.ArrayInterface, %{
+          binary: <<1.0::float-32-native, 2.0::float-32-native>>,
+          typestr: "<f4",
+          shape: {2},
+          # Invalid: string instead of boolean atom
+          readonly: "not_a_boolean"
+        })
 
       result =
         EXGBoost.NIF.dmatrix_create_from_dense(
-          binary,
-          "<f4",
-          [2],
-          # Invalid: string instead of boolean atom
-          "not_a_boolean",
+          to_tuple(array_interface),
           config()
         )
 
@@ -802,16 +690,19 @@ defmodule NifTest do
     end
 
     test "succeeds with valid parameters" do
-      binary =
-        <<1.0::float-32-native, 2.0::float-32-native, 3.0::float-32-native, 4.0::float-32-native>>
+      array_interface =
+        struct!(EXGBoost.ArrayInterface, %{
+          binary:
+            <<1.0::float-32-native, 2.0::float-32-native, 3.0::float-32-native,
+              4.0::float-32-native>>,
+          typestr: "<f4",
+          shape: {2, 2},
+          readonly: true
+        })
 
       result =
         EXGBoost.NIF.dmatrix_create_from_dense(
-          binary,
-          "<f4",
-          # 2*2*4 = 16 bytes (matches binary size)
-          [2, 2],
-          true,
+          to_tuple(array_interface),
           config()
         )
 
@@ -820,37 +711,32 @@ defmodule NifTest do
 
     test "validates typestr with different endianness markers" do
       # Little-endian with float (4 bytes)
-      binary_f4 = <<1.0::float-32-native, 2.0::float-32-native>>
+      array_interface =
+        struct!(EXGBoost.ArrayInterface, %{
+          binary: <<1.0::float-32-native, 2.0::float-32-native>>,
+          typestr: "<f4",
+          shape: {2},
+          readonly: true
+        })
 
       # Little-endian should work
       assert {:ok, _} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary_f4,
-                 "<f4",
-                 [2],
-                 true,
+                 to_tuple(array_interface),
                  config()
                )
 
       # Non-endian (|) is only valid for single-byte types
-      binary_i1 = <<1, 2>>
-
       assert {:ok, _} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary_i1,
-                 "|i1",
-                 [2],
-                 true,
+                 to_tuple(%{array_interface | binary: <<1, 2>>, typestr: "|i1"}),
                  config()
                )
 
       # Non-endian with multi-byte type should fail
       assert {:error, error_msg} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary_f4,
-                 "|i4",
-                 [2],
-                 true,
+                 to_tuple(%{array_interface | typestr: "|i4"}),
                  config()
                )
 
@@ -859,10 +745,7 @@ defmodule NifTest do
       # Invalid endianness marker should fail
       assert {:error, error_msg} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary_f4,
-                 "?f4",
-                 [2],
-                 true,
+                 to_tuple(%{array_interface | typestr: "?f4"}),
                  config()
                )
 
@@ -871,10 +754,7 @@ defmodule NifTest do
       # Big-endian should be rejected (not supported until byte-swapping implemented)
       assert {:error, error_msg} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary_f4,
-                 ">f4",
-                 [2],
-                 true,
+                 to_tuple(%{array_interface | typestr: ">f4"}),
                  config()
                )
 
@@ -882,18 +762,21 @@ defmodule NifTest do
     end
 
     test "validates shape with overflow protection" do
-      binary = <<1.0::float-32-native, 2.0::float-32-native>>
+      array_interface =
+        struct!(EXGBoost.ArrayInterface, %{
+          binary: <<1.0::float-32-native, 2.0::float-32-native>>,
+          typestr: "<f4",
+          # Would require 4TB!
+          shape: {1_000_000, 1_000_000},
+          readonly: true
+        })
 
       # Extremely large shape that would overflow
       # Note: This might not fail if XGBoost itself fails first,
       # but our validation should catch reasonable overflows
       result =
         EXGBoost.NIF.dmatrix_create_from_dense(
-          binary,
-          "<f4",
-          # Would require 4TB!
-          [1_000_000, 1_000_000],
-          true,
+          to_tuple(array_interface),
           config()
         )
 
@@ -901,44 +784,38 @@ defmodule NifTest do
     end
 
     test "strict boolean validation requires atoms" do
-      binary = <<1.0::float-32-native, 2.0::float-32-native>>
+      array_interface =
+        struct!(EXGBoost.ArrayInterface, %{
+          binary: <<1.0::float-32-native, 2.0::float-32-native>>,
+          typestr: "<f4",
+          shape: {2},
+          readonly: true
+        })
 
       # Integer should fail
       assert {:error, _} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary,
-                 "<f4",
-                 [2],
-                 1,
+                 to_tuple(%{array_interface | readonly: 1}),
                  config()
                )
 
       # String should fail
       assert {:error, _} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary,
-                 "<f4",
-                 [2],
-                 "true",
+                 to_tuple(%{array_interface | readonly: "true"}),
                  config()
                )
 
       # Only true/false atoms should work
       assert {:ok, _} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary,
-                 "<f4",
-                 [2],
-                 true,
+                 to_tuple(%{array_interface | readonly: true}),
                  config()
                )
 
       assert {:ok, _} =
                EXGBoost.NIF.dmatrix_create_from_dense(
-                 binary,
-                 "<f4",
-                 [2],
-                 false,
+                 to_tuple(%{array_interface | readonly: false}),
                  config()
                )
     end

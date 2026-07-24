@@ -204,6 +204,12 @@ defmodule EXGBoost.ArrayInterface do
     """
   end
 
+  @spec to_tuple(EXGBoost.ArrayInterface.t()) ::
+          {binary() | nil, String.t(), [integer()], boolean()}
+  def to_tuple(%__MODULE__{binary: binary, typestr: typestr, shape: shape, readonly: readonly}) do
+    {binary, typestr, Tuple.to_list(shape), readonly}
+  end
+
   defp split_typestr(<<endian, type_code, bytes::binary>> = typestr)
        when endian in [?<, ?>, ?|] and bytes != "" do
     case Integer.parse(bytes) do

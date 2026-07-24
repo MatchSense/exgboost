@@ -128,15 +128,11 @@ defmodule EXGBoost.DMatrix do
 
     Enum.each(meta_opts, fn {key, value} ->
       arr = ArrayInterface.from_tensor(value)
-      shape = Tuple.to_list(arr.shape)
 
       EXGBoost.NIF.dmatrix_set_info_from_interface(
         dmat.ref,
         Atom.to_string(key),
-        arr.binary,
-        arr.typestr,
-        shape,
-        arr.readonly
+        ArrayInterface.to_tuple(arr)
       )
     end)
 
@@ -319,15 +315,14 @@ defmodule EXGBoost.DMatrix do
     config = Enum.into(config_opts, %{}, fn {key, value} -> {Atom.to_string(key), value} end)
     format = Keyword.fetch!(format_opts, :format)
 
-    arr = ArrayInterface.from_tensor(tensor)
-    shape = Tuple.to_list(arr.shape)
+    arr_tuple =
+      tensor
+      |> ArrayInterface.from_tensor()
+      |> ArrayInterface.to_tuple()
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_dense(
-        arr.binary,
-        arr.typestr,
-        shape,
-        arr.readonly,
+        arr_tuple,
         Jason.encode!(config)
       )
       |> Internal.unwrap!()
@@ -384,28 +379,15 @@ defmodule EXGBoost.DMatrix do
       raise ArgumentError, "Sparse format must be :csr or :csc"
     end
 
-    indptr_arr = ArrayInterface.from_tensor(indptr)
-    indices_arr = ArrayInterface.from_tensor(indices)
-    data_arr = ArrayInterface.from_tensor(data)
-
-    indptr_shape = Tuple.to_list(indptr_arr.shape)
-    indices_shape = Tuple.to_list(indices_arr.shape)
-    data_shape = Tuple.to_list(data_arr.shape)
+    indptr_arr_tuple = ArrayInterface.from_tensor(indptr) |> ArrayInterface.to_tuple()
+    indices_arr_tuple = ArrayInterface.from_tensor(indices) |> ArrayInterface.to_tuple()
+    data_arr_tuple = ArrayInterface.from_tensor(data) |> ArrayInterface.to_tuple()
 
     dmat =
       EXGBoost.NIF.dmatrix_create_from_sparse(
-        indptr_arr.binary,
-        indptr_arr.typestr,
-        indptr_shape,
-        indptr_arr.readonly,
-        indices_arr.binary,
-        indices_arr.typestr,
-        indices_shape,
-        indices_arr.readonly,
-        data_arr.binary,
-        data_arr.typestr,
-        data_shape,
-        data_arr.readonly,
+        indptr_arr_tuple,
+        indices_arr_tuple,
+        data_arr_tuple,
         n,
         Jason.encode!(config),
         Atom.to_string(format)
