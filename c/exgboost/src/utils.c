@@ -145,6 +145,7 @@ void exg_free_dmatrix_list(DMatrixHandle *dmats) {
   }
 }
 
+// Unsafe, to be deprecated in future releases.
 ERL_NIF_TERM exg_get_binary_address(ErlNifEnv *env, int argc,
                                     const ERL_NIF_TERM argv[]) {
   ErlNifBinary bin;
@@ -162,6 +163,7 @@ END:
   return ret;
 }
 
+// Unsafe, to be deprecated in future releases.
 ERL_NIF_TERM exg_get_binary_from_address(ErlNifEnv *env, int argc,
                                          const ERL_NIF_TERM argv[]) {
   ErlNifBinary out_bin;

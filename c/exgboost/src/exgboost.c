@@ -48,8 +48,12 @@ static ErlNifFunc nif_funcs[] = {
     {"dmatrix_num_non_missing", 1, EXGDMatrixNumNonMissing},
     {"dmatrix_set_info_from_interface", 3, EXGDMatrixSetInfoFromInterface},
     {"dmatrix_save_binary", 3, EXGDMatrixSaveBinary},
+
+    // Unsafe, to be deprecated in future releases.
     {"get_binary_address", 1, exg_get_binary_address},
+    // Unsafe, to be deprecated in future releases.
     {"get_binary_from_address", 2, exg_get_binary_from_address},
+
     {"dmatrix_get_float_info", 2, EXGDMatrixGetFloatInfo},
     {"dmatrix_get_uint_info", 2, EXGDMatrixGetUIntInfo},
     {"dmatrix_get_data_as_csr", 2, EXGDMatrixGetDataAsCSR},

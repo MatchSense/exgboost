@@ -211,10 +211,12 @@ defmodule EXGBoost.NIF do
   def dmatrix_save_binary(_handle, _fname, _silent),
     do: :erlang.nif_error(:not_implemented)
 
+  @doc deprecated: "Known to be unsafe, to be removed in future releases. Prefer NIF owning the address stability and lifetime guarantee."
   @spec get_binary_address(dmatrix_reference()) :: exgboost_return_type(integer)
   def get_binary_address(_handle),
     do: :erlang.nif_error(:not_implemented)
 
+  @doc deprecated: "Known to be unsafe, to be removed in future releases. Prefer NIF owning the address stability and lifetime guarantee."
   @spec get_binary_from_address(integer(), integer()) :: exgboost_return_type(binary())
   def get_binary_from_address(_address, _size), do: :erlang.nif_error(:not_implemented)
 
