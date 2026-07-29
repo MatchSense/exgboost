@@ -430,24 +430,6 @@ defmodule NifTest do
     assert EXGBoost.NIF.booster_get_str_feature_info(booster, ~c"feature_name") |> unwrap!()
   end
 
-  test "booster_feature_score" do
-    # TODO: Make more robust test. This will just return an empty list
-    mat = Nx.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    mat_arr = from_tensor(mat)
-
-    dmat =
-      EXGBoost.NIF.dmatrix_create_from_dense(
-        to_tuple(mat_arr),
-        config()
-      )
-      |> unwrap!()
-
-    config = Jason.encode!(%{"importance_type" => "weight"})
-    booster = EXGBoost.NIF.booster_create([dmat]) |> unwrap!()
-
-    assert EXGBoost.NIF.booster_feature_score(booster, config) |> unwrap!() != :error
-  end
-
   test "booster_feature_score returns feature names, shape, and flattened scores" do
     x =
       Nx.tensor(
