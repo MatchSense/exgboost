@@ -172,58 +172,6 @@ void exg_free_dmatrix_list(DMatrixHandle *dmats) {
   }
 }
 
-// Unsafe, to be deprecated in future releases.
-ERL_NIF_TERM exg_get_binary_address(ErlNifEnv *env, int argc,
-                                    const ERL_NIF_TERM argv[]) {
-  ErlNifBinary bin;
-  ERL_NIF_TERM ret = 0;
-  if (argc != 1) {
-    ret = exg_error(env, "exg_get_binary_address: wrong number of arguments");
-    goto END;
-  }
-  if (!enif_inspect_binary(env, argv[0], &bin)) {
-    ret = exg_error(env, "exg_get_binary_address: invalid binary");
-    goto END;
-  }
-  ret = exg_ok(env, enif_make_uint64(env, (uint64_t)bin.data));
-END:
-  return ret;
-}
-
-// Unsafe, to be deprecated in future releases.
-ERL_NIF_TERM exg_get_binary_from_address(ErlNifEnv *env, int argc,
-                                         const ERL_NIF_TERM argv[]) {
-  ErlNifUInt64 address = 0;
-  ErlNifUInt64 size = 0;
-  ERL_NIF_TERM ret = -1;
-  if (argc != 2) {
-    ret = exg_error(env, "exg_get_binary_from_address: wrong number of arguments");
-    goto END;
-  }
-  if (!enif_get_uint64(env, argv[0], &address)) {
-    ret = exg_error(env, "exg_get_binary_from_address: invalid address");
-    goto END;
-  }
-  if (!enif_get_uint64(env, argv[1], &size)) {
-    ret = exg_error(env, "exg_get_binary_from_address: invalid size");
-    goto END;
-  }
-
-  // Use enif_make_new_binary for cleaner memory management
-  ERL_NIF_TERM binary_term;
-  unsigned char *dest = enif_make_new_binary(env, size, &binary_term);
-  if (dest == NULL && size != 0) {
-    ret = exg_error(env, "Failed to allocate binary");
-    goto END;
-  }
-  if (size > 0) {
-    memcpy(dest, (const void *)address, size);
-  }
-  ret = exg_ok(env, binary_term);
-END:
-  return ret;
-}
-
 // Helper: Extract boolean from term (true/false atom only)
 static int exg_get_boolean(ErlNifEnv *env, ERL_NIF_TERM term, int *value) {
   if (enif_is_identical(term, ATOM_TRUE)) {

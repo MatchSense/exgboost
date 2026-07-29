@@ -28,14 +28,6 @@ ERL_NIF_TERM ok_atom(ErlNifEnv *env);
 
 ERL_NIF_TERM exg_ok(ErlNifEnv *env, ERL_NIF_TERM term);
 
-// Unsafe, to be deprecated in future releases.
-ERL_NIF_TERM exg_get_binary_address(ErlNifEnv *env, int argc,
-                                    const ERL_NIF_TERM argv[]);
-
-// Unsafe, to be deprecated in future releases.
-ERL_NIF_TERM exg_get_binary_from_address(ErlNifEnv *env, int argc,
-                                         const ERL_NIF_TERM argv[]);
-
 ERL_NIF_TERM exg_get_int_size(ErlNifEnv *env, int argc,
                               const ERL_NIF_TERM argv[]);
 

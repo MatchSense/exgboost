@@ -77,9 +77,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Supported type codes: `i` (signed int), `u` (unsigned int), `f` (float), `c` (complex)
     - Element size: Any syntactically valid positive integer; XGBoost validates actual type support
 
-- **Unsafe APIs marked as DEPRECATED - to be removed in future releases**:
+- **Unsafe APIs removed in this releases**:
   - `EXGBoost.NIF.get_binary_from_address/2` - arbitrary memory read primitive that could crash the BEAM VM
+  - `EXGBoost.NIF.get_binary_address/1` - arbitrary memory read primitive that could crash the BEAM VM
   - `exg_get_binary_from_address` C NIF function and all declarations
+  - `exg_get_binary_address` C NIF function and all declarations
   - Address-based tensor reconstruction in `ArrayInterface.get_tensor/1`
   - Tensor caching in `ArrayInterface` struct
 
