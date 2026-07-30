@@ -1,11 +1,10 @@
 #include "booster.h"
+
 #include <limits.h>
 
-static ERL_NIF_TERM make_Booster_resource(ErlNifEnv *env,
-                                          BoosterHandle handle) {
+static ERL_NIF_TERM make_Booster_resource(ErlNifEnv *env, BoosterHandle handle) {
   ERL_NIF_TERM ret = -1;
-  BoosterHandle **resource =
-      enif_alloc_resource(Booster_RESOURCE_TYPE, sizeof(BoosterHandle *));
+  BoosterHandle **resource = enif_alloc_resource(Booster_RESOURCE_TYPE, sizeof(BoosterHandle *));
   if (resource != NULL) {
     *resource = handle;
     // BEAM resource now owns the handle and releases it in resource cleanup.
@@ -17,8 +16,7 @@ static ERL_NIF_TERM make_Booster_resource(ErlNifEnv *env,
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterCreate(ErlNifEnv *env, int argc,
-                              const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterCreate(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle *dmats = NULL;
   ERL_NIF_TERM ret = -1;
   int result = -1;
@@ -56,8 +54,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterSlice(ErlNifEnv *env, int argc,
-                             const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterSlice(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle in_booster;
   BoosterHandle out_booster;
   BoosterHandle **resource = NULL;
@@ -70,8 +67,7 @@ ERL_NIF_TERM EXGBoosterSlice(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -88,8 +84,7 @@ ERL_NIF_TERM EXGBoosterSlice(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Invalid step");
     goto END;
   }
-  result =
-      XGBoosterSlice(in_booster, begin_layer, end_layer, step, &out_booster);
+  result = XGBoosterSlice(in_booster, begin_layer, end_layer, step, &out_booster);
   if (result == 0) {
     ret = make_Booster_resource(env, out_booster);
   } else {
@@ -99,8 +94,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterBoostedRounds(ErlNifEnv *env, int argc,
-                                     const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterBoostedRounds(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **resource = NULL;
   int rounds;
@@ -110,8 +104,7 @@ ERL_NIF_TERM EXGBoosterBoostedRounds(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -126,8 +119,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterSetParam(ErlNifEnv *env, int argc,
-                                const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterSetParam(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **resource = NULL;
   char *name = NULL;
@@ -138,8 +130,7 @@ ERL_NIF_TERM EXGBoosterSetParam(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -169,8 +160,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterGetNumFeature(ErlNifEnv *env, int argc,
-                                     const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterGetNumFeature(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **resource = NULL;
   bst_ulong num_feature;
@@ -180,8 +170,7 @@ ERL_NIF_TERM EXGBoosterGetNumFeature(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -196,8 +185,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterUpdateOneIter(ErlNifEnv *env, int argc,
-                                     const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterUpdateOneIter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   DMatrixHandle dtrain;
@@ -209,14 +197,12 @@ ERL_NIF_TERM EXGBoosterUpdateOneIter(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
   booster = *booster_resource;
-  if (!enif_get_resource(env, argv[1], DMatrix_RESOURCE_TYPE,
-                         (void *)&(dtrain_resource))) {
+  if (!enif_get_resource(env, argv[1], DMatrix_RESOURCE_TYPE, (void *)&(dtrain_resource))) {
     ret = exg_error(env, "Invalid DMatrix");
     goto END;
   }
@@ -234,8 +220,7 @@ ERL_NIF_TERM EXGBoosterUpdateOneIter(ErlNifEnv *env, int argc,
 END:
   return ret;
 }
-ERL_NIF_TERM EXGBoosterBoostOneIter(ErlNifEnv *env, int argc,
-                                    const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterBoostOneIter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   ErlNifBinary grad_bin;
   ErlNifBinary hess_bin;
   BoosterHandle booster;
@@ -253,14 +238,12 @@ ERL_NIF_TERM EXGBoosterBoostOneIter(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
   booster = *booster_resource;
-  if (!enif_get_resource(env, argv[1], DMatrix_RESOURCE_TYPE,
-                         (void *)&(dtrain_resource))) {
+  if (!enif_get_resource(env, argv[1], DMatrix_RESOURCE_TYPE, (void *)&(dtrain_resource))) {
     ret = exg_error(env, "Invalid DMatrix");
     goto END;
   }
@@ -281,8 +264,7 @@ ERL_NIF_TERM EXGBoosterBoostOneIter(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Grad and Hess must have the same length");
     goto END;
   }
-  result =
-      XGBoosterBoostOneIter(booster, dtrain, grad, hess, (bst_ulong)grad_len);
+  result = XGBoosterBoostOneIter(booster, dtrain, grad, hess, (bst_ulong)grad_len);
   if (result == 0) {
     ret = ok_atom(env);
   } else {
@@ -292,8 +274,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterEvalOneIter(ErlNifEnv *env, int argc,
-                                   const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterEvalOneIter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   DMatrixHandle *dmats = NULL;
@@ -308,8 +289,7 @@ ERL_NIF_TERM EXGBoosterEvalOneIter(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -330,8 +310,8 @@ ERL_NIF_TERM EXGBoosterEvalOneIter(ErlNifEnv *env, int argc,
     ret = exg_error(env, "dmats and evnames must have the same length");
     goto END;
   }
-  result = XGBoosterEvalOneIter(booster, iter, dmats, (const char **)evnames,
-                                (bst_ulong)num_dmats, &out);
+  result = XGBoosterEvalOneIter(booster, iter, dmats, (const char **)evnames, (bst_ulong)num_dmats,
+                                &out);
   if (result == 0) {
     ret = exg_ok(env, enif_make_string(env, out, ERL_NIF_LATIN1));
   } else {
@@ -344,8 +324,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterGetAttr(ErlNifEnv *env, int argc,
-                               const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterGetAttr(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   char *key = NULL;
@@ -357,8 +336,7 @@ ERL_NIF_TERM EXGBoosterGetAttr(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -384,8 +362,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterSetAttr(ErlNifEnv *env, int argc,
-                               const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterSetAttr(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   char *key = NULL;
@@ -397,8 +374,7 @@ ERL_NIF_TERM EXGBoosterSetAttr(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -441,8 +417,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterGetAttrNames(ErlNifEnv *env, int argc,
-                                    const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterGetAttrNames(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   const char **out = NULL;
@@ -455,8 +430,7 @@ ERL_NIF_TERM EXGBoosterGetAttrNames(ErlNifEnv *env, int argc,
     goto END;
   }
 
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -478,23 +452,12 @@ ERL_NIF_TERM EXGBoosterGetAttrNames(ErlNifEnv *env, int argc,
       }
 
       for (bst_ulong i = 0; i < out_len; ++i) {
-        arr[i] =
-            enif_make_string(
-                env,
-                out[i],
-                ERL_NIF_LATIN1
-            );
+        arr[i] = enif_make_string(env, out[i], ERL_NIF_LATIN1);
       }
     }
 
-    ERL_NIF_TERM list =
-        out_len == 0
-            ? enif_make_list(env, 0)
-            : enif_make_list_from_array(
-                  env,
-                  arr,
-                  (unsigned)out_len
-              );
+    ERL_NIF_TERM list = out_len == 0 ? enif_make_list(env, 0)
+                                     : enif_make_list_from_array(env, arr, (unsigned)out_len);
 
     ret = exg_ok(env, list);
   } else {
@@ -509,8 +472,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterSetStrFeatureInfo(ErlNifEnv *env, int argc,
-                                         const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterSetStrFeatureInfo(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle handle;
   BoosterHandle **resource = NULL;
   char **features = NULL;
@@ -522,8 +484,7 @@ ERL_NIF_TERM EXGBoosterSetStrFeatureInfo(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "Booster must be a resource");
     goto END;
   }
@@ -535,14 +496,12 @@ ERL_NIF_TERM EXGBoosterSetStrFeatureInfo(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Features must be a list");
     goto END;
   }
-  if (strcmp(field, "feature_type") != 0 &&
-      strcmp(field, "feature_name") != 0) {
+  if (strcmp(field, "feature_type") != 0 && strcmp(field, "feature_name") != 0) {
     ret = exg_error(env, "Field must be in ['feature_type', 'feature_name']");
     goto END;
   }
   handle = *resource;
-  result = XGBoosterSetStrFeatureInfo(handle, field, (const char **)features,
-                                      num_features);
+  result = XGBoosterSetStrFeatureInfo(handle, field, (const char **)features, num_features);
   if (result == 0) {
     ret = ok_atom(env);
   } else {
@@ -557,8 +516,7 @@ END:
   }
   return ret;
 }
-ERL_NIF_TERM EXGBoosterGetStrFeatureInfo(ErlNifEnv *env, int argc,
-                                         const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterGetStrFeatureInfo(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle handle;
   BoosterHandle **resource = NULL;
   char const **c_out_features = NULL;
@@ -573,8 +531,7 @@ ERL_NIF_TERM EXGBoosterGetStrFeatureInfo(ErlNifEnv *env, int argc,
     goto END;
   }
 
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "Booster must be a resource");
     goto END;
   }
@@ -584,8 +541,7 @@ ERL_NIF_TERM EXGBoosterGetStrFeatureInfo(ErlNifEnv *env, int argc,
     goto END;
   }
 
-  if (strcmp(field, "feature_type") != 0 &&
-      strcmp(field, "feature_name") != 0) {
+  if (strcmp(field, "feature_type") != 0 && strcmp(field, "feature_name") != 0) {
     ret = exg_error(env, "Field must be in ['feature_type', 'feature_name']");
     goto END;
   }
@@ -594,8 +550,7 @@ ERL_NIF_TERM EXGBoosterGetStrFeatureInfo(ErlNifEnv *env, int argc,
   result = XGBoosterGetStrFeatureInfo(handle, field, &out_len, &c_out_features);
 
   if (result == 0) {
-    if (out_len > UINT_MAX ||
-      out_len > SIZE_MAX / sizeof(*arr)) {
+    if (out_len > UINT_MAX || out_len > SIZE_MAX / sizeof(*arr)) {
       ret = exg_error(env, "Result is too large");
       goto END;
     }
@@ -609,23 +564,12 @@ ERL_NIF_TERM EXGBoosterGetStrFeatureInfo(ErlNifEnv *env, int argc,
       }
 
       for (bst_ulong i = 0; i < out_len; ++i) {
-        arr[i] =
-            enif_make_string(
-                env,
-                c_out_features[i],
-                ERL_NIF_LATIN1
-            );
+        arr[i] = enif_make_string(env, c_out_features[i], ERL_NIF_LATIN1);
       }
     }
 
-    ERL_NIF_TERM list =
-        out_len == 0
-            ? enif_make_list(env, 0)
-            : enif_make_list_from_array(
-                  env,
-                  arr,
-                  (unsigned)out_len
-              );
+    ERL_NIF_TERM list = out_len == 0 ? enif_make_list(env, 0)
+                                     : enif_make_list_from_array(env, arr, (unsigned)out_len);
 
     ret = exg_ok(env, list);
   } else {
@@ -641,11 +585,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterFeatureScore(
-    ErlNifEnv *env,
-    int argc,
-    const ERL_NIF_TERM argv[]
-) {
+ERL_NIF_TERM EXGBoosterFeatureScore(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   char *config = NULL;
@@ -668,11 +608,7 @@ ERL_NIF_TERM EXGBoosterFeatureScore(
     goto END;
   }
 
-  if (!enif_get_resource(
-          env,
-          argv[0],
-          Booster_RESOURCE_TYPE,
-          (void **)&booster_resource)) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void **)&booster_resource)) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -684,16 +620,8 @@ ERL_NIF_TERM EXGBoosterFeatureScore(
 
   booster = *booster_resource;
 
-  result =
-      XGBoosterFeatureScore(
-          booster,
-          config,
-          &out_n_features,
-          &out_features,
-          &out_dim,
-          &out_shape,
-          &out_scores
-      );
+  result = XGBoosterFeatureScore(booster, config, &out_n_features, &out_features, &out_dim,
+                                 &out_shape, &out_scores);
 
   if (result != 0) {
     ret = exg_error(env, XGBGetLastError());
@@ -787,10 +715,7 @@ ERL_NIF_TERM EXGBoosterFeatureScore(
       goto END;
     }
 
-    feature_terms =
-        enif_alloc(
-            (size_t)out_n_features * sizeof(*feature_terms)
-        );
+    feature_terms = enif_alloc((size_t)out_n_features * sizeof(*feature_terms));
 
     if (feature_terms == NULL) {
       ret = exg_error(env, "Failed to allocate feature names");
@@ -803,12 +728,7 @@ ERL_NIF_TERM EXGBoosterFeatureScore(
         goto END;
       }
 
-      feature_terms[i] =
-          enif_make_string(
-              env,
-              out_features[i],
-              ERL_NIF_LATIN1
-          );
+      feature_terms[i] = enif_make_string(env, out_features[i], ERL_NIF_LATIN1);
     }
   }
 
@@ -820,8 +740,7 @@ ERL_NIF_TERM EXGBoosterFeatureScore(
     goto END;
   }
 
-  shape_terms =
-      enif_alloc((size_t)out_dim * sizeof(*shape_terms));
+  shape_terms = enif_alloc((size_t)out_dim * sizeof(*shape_terms));
 
   if (shape_terms == NULL) {
     ret = exg_error(env, "Failed to allocate feature-score shape");
@@ -829,11 +748,7 @@ ERL_NIF_TERM EXGBoosterFeatureScore(
   }
 
   for (bst_ulong i = 0; i < out_dim; ++i) {
-    shape_terms[i] =
-        enif_make_uint64(
-            env,
-            (ErlNifUInt64)out_shape[i]
-        );
+    shape_terms[i] = enif_make_uint64(env, (ErlNifUInt64)out_shape[i]);
   }
 
   /*
@@ -845,8 +760,7 @@ ERL_NIF_TERM EXGBoosterFeatureScore(
       goto END;
     }
 
-    score_terms =
-        enif_alloc(score_count * sizeof(*score_terms));
+    score_terms = enif_alloc(score_count * sizeof(*score_terms));
 
     if (score_terms == NULL) {
       ret = exg_error(env, "Failed to allocate feature scores");
@@ -854,46 +768,21 @@ ERL_NIF_TERM EXGBoosterFeatureScore(
     }
 
     for (size_t i = 0; i < score_count; ++i) {
-      score_terms[i] =
-          enif_make_double(env, out_scores[i]);
+      score_terms[i] = enif_make_double(env, out_scores[i]);
     }
   }
 
   ERL_NIF_TERM features =
-      out_n_features == 0
-          ? enif_make_list(env, 0)
-          : enif_make_list_from_array(
-                env,
-                feature_terms,
-                (unsigned)out_n_features
-            );
+      out_n_features == 0 ? enif_make_list(env, 0)
+                          : enif_make_list_from_array(env, feature_terms, (unsigned)out_n_features);
 
-  ERL_NIF_TERM shape =
-      enif_make_tuple_from_array(
-          env,
-          shape_terms,
-          (unsigned)out_dim
-      );
+  ERL_NIF_TERM shape = enif_make_tuple_from_array(env, shape_terms, (unsigned)out_dim);
 
-  ERL_NIF_TERM scores =
-      score_count == 0
-          ? enif_make_list(env, 0)
-          : enif_make_list_from_array(
-                env,
-                score_terms,
-                (unsigned)score_count
-            );
+  ERL_NIF_TERM scores = score_count == 0
+                            ? enif_make_list(env, 0)
+                            : enif_make_list_from_array(env, score_terms, (unsigned)score_count);
 
-  ret =
-      exg_ok(
-          env,
-          enif_make_tuple3(
-              env,
-              features,
-              shape,
-              scores
-          )
-      );
+  ret = exg_ok(env, enif_make_tuple3(env, features, shape, scores));
 
 END:
   if (feature_terms != NULL) {
@@ -915,12 +804,8 @@ END:
   return ret;
 }
 
-static ERL_NIF_TERM collect_prediction_results(
-    ErlNifEnv *env,
-    const bst_ulong *out_shape,
-    bst_ulong out_dim,
-    const float *out_result
-) {
+static ERL_NIF_TERM collect_prediction_results(ErlNifEnv *env, const bst_ulong *out_shape,
+                                               bst_ulong out_dim, const float *out_result) {
   ERL_NIF_TERM ret = 0;
   ERL_NIF_TERM *shape_terms = NULL;
   ERL_NIF_TERM *result_terms = NULL;
@@ -937,13 +822,11 @@ static ERL_NIF_TERM collect_prediction_results(
   /*
    * enif_make_tuple_from_array() takes an unsigned count.
    */
-  if (out_dim > UINT_MAX ||
-      out_dim > SIZE_MAX / sizeof(*shape_terms)) {
+  if (out_dim > UINT_MAX || out_dim > SIZE_MAX / sizeof(*shape_terms)) {
     return exg_error(env, "Prediction dimension is too large");
   }
 
-  shape_terms =
-      enif_alloc((size_t)out_dim * sizeof(*shape_terms));
+  shape_terms = enif_alloc((size_t)out_dim * sizeof(*shape_terms));
 
   if (shape_terms == NULL) {
     return exg_error(env, "Failed to allocate prediction shape");
@@ -966,15 +849,13 @@ static ERL_NIF_TERM collect_prediction_results(
 
     result_len *= dim;
 
-    shape_terms[i] =
-        enif_make_uint64(env, (ErlNifUInt64)dim_arg);
+    shape_terms[i] = enif_make_uint64(env, (ErlNifUInt64)dim_arg);
   }
 
   /*
    * enif_make_list_from_array() also takes an unsigned count.
    */
-  if (result_len > UINT_MAX ||
-      result_len > SIZE_MAX / sizeof(*result_terms)) {
+  if (result_len > UINT_MAX || result_len > SIZE_MAX / sizeof(*result_terms)) {
     ret = exg_error(env, "Prediction result is too large");
     goto END;
   }
@@ -985,8 +866,7 @@ static ERL_NIF_TERM collect_prediction_results(
   }
 
   if (result_len != 0) {
-    result_terms =
-        enif_alloc(result_len * sizeof(*result_terms));
+    result_terms = enif_alloc(result_len * sizeof(*result_terms));
 
     if (result_terms == NULL) {
       ret = exg_error(env, "Failed to allocate prediction result");
@@ -994,32 +874,17 @@ static ERL_NIF_TERM collect_prediction_results(
     }
 
     for (size_t i = 0; i < result_len; ++i) {
-      result_terms[i] =
-          enif_make_double(env, out_result[i]);
+      result_terms[i] = enif_make_double(env, out_result[i]);
     }
   }
 
-  ERL_NIF_TERM shape =
-      enif_make_tuple_from_array(
-          env,
-          shape_terms,
-          (unsigned)out_dim
-      );
+  ERL_NIF_TERM shape = enif_make_tuple_from_array(env, shape_terms, (unsigned)out_dim);
 
-  ERL_NIF_TERM results =
-      result_len == 0
-          ? enif_make_list(env, 0)
-          : enif_make_list_from_array(
-                env,
-                result_terms,
-                (unsigned)result_len
-            );
+  ERL_NIF_TERM results = result_len == 0
+                             ? enif_make_list(env, 0)
+                             : enif_make_list_from_array(env, result_terms, (unsigned)result_len);
 
-  ret =
-      exg_ok(
-          env,
-          enif_make_tuple2(env, shape, results)
-      );
+  ret = exg_ok(env, enif_make_tuple2(env, shape, results));
 
 END:
   if (shape_terms != NULL) {
@@ -1033,8 +898,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterPredictFromDMatrix(ErlNifEnv *env, int argc,
-                                          const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterPredictFromDMatrix(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   DMatrixHandle dmatrix;
@@ -1050,13 +914,11 @@ ERL_NIF_TERM EXGBoosterPredictFromDMatrix(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
-  if (!enif_get_resource(env, argv[1], DMatrix_RESOURCE_TYPE,
-                         (void *)&(dmatrix_resource))) {
+  if (!enif_get_resource(env, argv[1], DMatrix_RESOURCE_TYPE, (void *)&(dmatrix_resource))) {
     ret = exg_error(env, "Invalid DMatrix");
     goto END;
   }
@@ -1066,8 +928,7 @@ ERL_NIF_TERM EXGBoosterPredictFromDMatrix(ErlNifEnv *env, int argc,
   }
   booster = *booster_resource;
   dmatrix = *dmatrix_resource;
-  result = XGBoosterPredictFromDMatrix(booster, dmatrix, config, &out_shape,
-                                       &out_dim, &out_result);
+  result = XGBoosterPredictFromDMatrix(booster, dmatrix, config, &out_shape, &out_dim, &out_result);
   if (result == 0) {
     ret = collect_prediction_results(env, out_shape, out_dim, out_result);
   } else {
@@ -1080,8 +941,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterPredictFromDense(ErlNifEnv *env, int argc,
-                                        const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterPredictFromDense(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   DMatrixHandle proxy;
@@ -1100,14 +960,14 @@ ERL_NIF_TERM EXGBoosterPredictFromDense(ErlNifEnv *env, int argc,
     goto END;
   }
 
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
 
   // Build ArrayInterface JSON from components: (binary, typestr, shape, readonly)
-  if (!exg_build_array_interface_json(env, argv[1], argv[2], argv[3], argv[4], &values, &error_msg)) {
+  if (!exg_build_array_interface_json(env, argv[1], argv[2], argv[3], argv[4], &values,
+                                      &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to extract ArrayInterface");
     goto END;
   }
@@ -1117,15 +977,14 @@ ERL_NIF_TERM EXGBoosterPredictFromDense(ErlNifEnv *env, int argc,
     goto END;
   }
 
-  if (!enif_get_resource(env, argv[6], DMatrix_RESOURCE_TYPE,
-                         (void *)&(proxy_resource))) {
+  if (!enif_get_resource(env, argv[6], DMatrix_RESOURCE_TYPE, (void *)&(proxy_resource))) {
     proxy = NULL;
   } else {
     proxy = *proxy_resource;
   }
   booster = *booster_resource;
-  result = XGBoosterPredictFromDense(booster, values, config, proxy, &out_shape,
-                                     &out_dim, &out_result);
+  result =
+      XGBoosterPredictFromDense(booster, values, config, proxy, &out_shape, &out_dim, &out_result);
   if (result == 0) {
     ret = collect_prediction_results(env, out_shape, out_dim, out_result);
   } else {
@@ -1141,8 +1000,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
-                                      const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   DMatrixHandle proxy;
@@ -1165,24 +1023,26 @@ ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
     goto END;
   }
 
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
 
   // Build ArrayInterface JSON for each sparse array from components
-  if (!exg_build_array_interface_json(env, argv[1], argv[2], argv[3], argv[4], &indptr, &error_msg)) {
+  if (!exg_build_array_interface_json(env, argv[1], argv[2], argv[3], argv[4], &indptr,
+                                      &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to extract indptr ArrayInterface");
     goto END;
   }
 
-  if (!exg_build_array_interface_json(env, argv[5], argv[6], argv[7], argv[8], &indices, &error_msg)) {
+  if (!exg_build_array_interface_json(env, argv[5], argv[6], argv[7], argv[8], &indices,
+                                      &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to extract indices ArrayInterface");
     goto END;
   }
 
-  if (!exg_build_array_interface_json(env, argv[9], argv[10], argv[11], argv[12], &data, &error_msg)) {
+  if (!exg_build_array_interface_json(env, argv[9], argv[10], argv[11], argv[12], &data,
+                                      &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to extract data ArrayInterface");
     goto END;
   }
@@ -1204,17 +1064,14 @@ ERL_NIF_TERM EXGBoosterPredictFromCSR(ErlNifEnv *env, int argc,
     goto END;
   }
 
-  if (!enif_get_resource(env, argv[15], DMatrix_RESOURCE_TYPE,
-                         (void *)&(proxy_resource))) {
+  if (!enif_get_resource(env, argv[15], DMatrix_RESOURCE_TYPE, (void *)&(proxy_resource))) {
     proxy = NULL;
   } else {
     proxy = *proxy_resource;
   }
   booster = *booster_resource;
-  result =
-      XGBoosterPredictFromCSR(booster, indptr, indices, data,
-                              ncols, config, proxy, &out_shape,
-                              &out_dim, &out_result);
+  result = XGBoosterPredictFromCSR(booster, indptr, indices, data, ncols, config, proxy, &out_shape,
+                                   &out_dim, &out_result);
   if (result == 0) {
     ret = collect_prediction_results(env, out_shape, out_dim, out_result);
   } else {
@@ -1236,8 +1093,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterLoadModel(ErlNifEnv *env, int argc,
-                                 const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterLoadModel(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   char *fname = NULL;
   int result = -1;
@@ -1269,8 +1125,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterSaveModel(ErlNifEnv *env, int argc,
-                                 const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterSaveModel(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   char *fname = NULL;
@@ -1280,8 +1135,7 @@ ERL_NIF_TERM EXGBoosterSaveModel(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -1303,8 +1157,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterSerializeToBuffer(ErlNifEnv *env, int argc,
-                                         const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterSerializeToBuffer(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   bst_ulong out_len = 0;
@@ -1315,8 +1168,7 @@ ERL_NIF_TERM EXGBoosterSerializeToBuffer(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -1342,8 +1194,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterDeserializeFromBuffer(ErlNifEnv *env, int argc,
-                                             const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterDeserializeFromBuffer(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   char *buf = NULL;
   int result = -1;
@@ -1378,8 +1229,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterLoadModelFromBuffer(ErlNifEnv *env, int argc,
-                                           const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterLoadModelFromBuffer(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   char *buf = NULL;
   int result = -1;
@@ -1414,8 +1264,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterSaveModelToBuffer(ErlNifEnv *env, int argc,
-                                         const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterSaveModelToBuffer(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   bst_ulong out_len = 0;
@@ -1427,14 +1276,12 @@ ERL_NIF_TERM EXGBoosterSaveModelToBuffer(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
   if (!exg_get_string(env, argv[1], &config)) {
-    ret = exg_error(env,
-                    "Invalid config -- config should be a JSON-encoded string");
+    ret = exg_error(env, "Invalid config -- config should be a JSON-encoded string");
     goto END;
   }
   booster = *booster_resource;
@@ -1462,8 +1309,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterSaveJsonConfig(ErlNifEnv *env, int argc,
-                                      const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterSaveJsonConfig(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   bst_ulong out_len = 0;
@@ -1474,8 +1320,7 @@ ERL_NIF_TERM EXGBoosterSaveJsonConfig(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -1501,8 +1346,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterLoadJsonConfig(ErlNifEnv *env, int argc,
-                                      const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterLoadJsonConfig(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   char *buf = NULL;
@@ -1513,8 +1357,7 @@ ERL_NIF_TERM EXGBoosterLoadJsonConfig(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -1538,8 +1381,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBoosterDumpModelEx(ErlNifEnv *env, int argc,
-                                   const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoosterDumpModelEx(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   bst_ulong out_len = 0;
@@ -1553,8 +1395,7 @@ ERL_NIF_TERM EXGBoosterDumpModelEx(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE,
-                         (void *)&(booster_resource))) {
+  if (!enif_get_resource(env, argv[0], Booster_RESOURCE_TYPE, (void *)&(booster_resource))) {
     ret = exg_error(env, "Invalid Booster");
     goto END;
   }
@@ -1571,8 +1412,7 @@ ERL_NIF_TERM EXGBoosterDumpModelEx(ErlNifEnv *env, int argc,
     goto END;
   }
   booster = *booster_resource;
-  result = XGBoosterDumpModelEx(booster, fmap, with_stats, format, &out_len,
-                                &out_dump_array);
+  result = XGBoosterDumpModelEx(booster, fmap, with_stats, format, &out_len, &out_dump_array);
   if (result == 0) {
     ERL_NIF_TERM arr[out_len];
     for (bst_ulong i = 0; i < out_len; ++i) {

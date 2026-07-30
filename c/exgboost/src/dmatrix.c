@@ -1,14 +1,14 @@
 #include "dmatrix.h"
-#include "yyjson.h"
+
 #include <errno.h>
 #include <inttypes.h>
 #include <string.h>
 
-static ERL_NIF_TERM make_DMatrix_resource(ErlNifEnv *env,
-                                          DMatrixHandle handle) {
+#include "yyjson.h"
+
+static ERL_NIF_TERM make_DMatrix_resource(ErlNifEnv *env, DMatrixHandle handle) {
   ERL_NIF_TERM ret = -1;
-  DMatrixHandle **resource =
-      enif_alloc_resource(DMatrix_RESOURCE_TYPE, sizeof(DMatrixHandle *));
+  DMatrixHandle **resource = enif_alloc_resource(DMatrix_RESOURCE_TYPE, sizeof(DMatrixHandle *));
   if (resource != NULL) {
     *resource = handle;
     // BEAM resource now owns the handle and releases it in resource cleanup.
@@ -21,8 +21,7 @@ static ERL_NIF_TERM make_DMatrix_resource(ErlNifEnv *env,
 }
 
 // Deprecated since XGBoost 2.0.0
-ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv *env, int argc,
-                                      const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixCreateFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   char *fname = NULL;
   char *format = NULL;
   int silent = 0;
@@ -59,8 +58,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixCreateFromURI(ErlNifEnv *env, int argc,
-                                     const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixCreateFromURI(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   char *config = NULL;
   DMatrixHandle handle;
   int result = -1;
@@ -87,8 +85,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixCreateFromMat(ErlNifEnv *env, int argc,
-                                     const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixCreateFromMat(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   ErlNifBinary bin;
   int result = -1;
   float *mat = NULL;
@@ -126,8 +123,7 @@ ERL_NIF_TERM EXGDMatrixCreateFromMat(ErlNifEnv *env, int argc,
   }
   // The DMatrix wlil keep ahold of this data, so we don't need to free it
   // Will be freed when DMatrix is freed in resource destructor
-  result = XGDMatrixCreateFromMat(mat, (bst_ulong)nrow, (bst_ulong)ncol,
-                                  missing, &handle);
+  result = XGDMatrixCreateFromMat(mat, (bst_ulong)nrow, (bst_ulong)ncol, missing, &handle);
   if (result == 0) {
     ret = make_DMatrix_resource(env, handle);
   } else {
@@ -137,8 +133,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixCreateFromSparse(ErlNifEnv *env, int argc,
-                                        const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixCreateFromSparse(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   int result = -1;
   char *indptr_interface = NULL;
   char *indices_interface = NULL;
@@ -159,39 +154,39 @@ ERL_NIF_TERM EXGDMatrixCreateFromSparse(ErlNifEnv *env, int argc,
   }
 
   // Extract ArrayInterface tuples: {binary, typestr, shape, readonly}
-  if (!exg_get_array_interface_tuple(env, argv[0], &indptr_binary, &indptr_typestr,
-                                      &indptr_shape, &indptr_readonly, &error_msg)) {
+  if (!exg_get_array_interface_tuple(env, argv[0], &indptr_binary, &indptr_typestr, &indptr_shape,
+                                     &indptr_readonly, &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to extract indptr ArrayInterface tuple");
     goto END;
   }
 
   if (!exg_get_array_interface_tuple(env, argv[1], &indices_binary, &indices_typestr,
-                                      &indices_shape, &indices_readonly, &error_msg)) {
+                                     &indices_shape, &indices_readonly, &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to extract indices ArrayInterface tuple");
     goto END;
   }
 
-  if (!exg_get_array_interface_tuple(env, argv[2], &data_binary, &data_typestr,
-                                      &data_shape, &data_readonly, &error_msg)) {
+  if (!exg_get_array_interface_tuple(env, argv[2], &data_binary, &data_typestr, &data_shape,
+                                     &data_readonly, &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to extract data ArrayInterface tuple");
     goto END;
   }
 
   // Build JSON from extracted components
   if (!exg_build_array_interface_json(env, indptr_binary, indptr_typestr, indptr_shape,
-                                       indptr_readonly, &indptr_interface, &error_msg)) {
+                                      indptr_readonly, &indptr_interface, &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to build indptr ArrayInterface");
     goto END;
   }
 
   if (!exg_build_array_interface_json(env, indices_binary, indices_typestr, indices_shape,
-                                       indices_readonly, &indices_interface, &error_msg)) {
+                                      indices_readonly, &indices_interface, &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to build indices ArrayInterface");
     goto END;
   }
 
-  if (!exg_build_array_interface_json(env, data_binary, data_typestr, data_shape,
-                                       data_readonly, &data_interface, &error_msg)) {
+  if (!exg_build_array_interface_json(env, data_binary, data_typestr, data_shape, data_readonly,
+                                      &data_interface, &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to build data ArrayInterface");
     goto END;
   }
@@ -221,11 +216,11 @@ ERL_NIF_TERM EXGDMatrixCreateFromSparse(ErlNifEnv *env, int argc,
     goto END;
   }
   if (strcmp(format, "csr") == 0) {
-    result = XGDMatrixCreateFromCSR(indptr_interface, indices_interface,
-                                    data_interface, n, config, &handle);
+    result = XGDMatrixCreateFromCSR(indptr_interface, indices_interface, data_interface, n, config,
+                                    &handle);
   } else if (strcmp(format, "csc") == 0) {
-    result = XGDMatrixCreateFromCSC(indptr_interface, indices_interface,
-                                    data_interface, n, config, &handle);
+    result = XGDMatrixCreateFromCSC(indptr_interface, indices_interface, data_interface, n, config,
+                                    &handle);
   } else {
     ret = exg_error(env, "Format must in ['csr','csc']");
     goto END;
@@ -259,8 +254,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv *env, int argc,
-                                       const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   int result = -1;
   char *array_interface = NULL;
   const char *error_msg = NULL;
@@ -275,15 +269,15 @@ ERL_NIF_TERM EXGDMatrixCreateFromDense(ErlNifEnv *env, int argc,
   }
 
   // Extract ArrayInterface tuple: {binary, typestr, shape, readonly}
-  if (!exg_get_array_interface_tuple(env, argv[0], &array_binary, &array_typestr,
-                                      &array_shape, &array_readonly, &error_msg)) {
+  if (!exg_get_array_interface_tuple(env, argv[0], &array_binary, &array_typestr, &array_shape,
+                                     &array_readonly, &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to extract ArrayInterface tuple");
     goto END;
   }
 
   // Build ArrayInterface JSON from components
-  if (!exg_build_array_interface_json(env, array_binary, array_typestr, array_shape,
-                                       array_readonly, &array_interface, &error_msg)) {
+  if (!exg_build_array_interface_json(env, array_binary, array_typestr, array_shape, array_readonly,
+                                      &array_interface, &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to build ArrayInterface");
     goto END;
   }
@@ -308,8 +302,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixSetStrFeatureInfo(ErlNifEnv *env, int argc,
-                                         const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixSetStrFeatureInfo(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   char **features = NULL;
@@ -321,8 +314,7 @@ ERL_NIF_TERM EXGDMatrixSetStrFeatureInfo(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
@@ -334,15 +326,13 @@ ERL_NIF_TERM EXGDMatrixSetStrFeatureInfo(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Features must be a list");
     goto END;
   }
-  if (strcmp(field, "feature_type") != 0 &&
-      strcmp(field, "feature_name") != 0) {
+  if (strcmp(field, "feature_type") != 0 && strcmp(field, "feature_name") != 0) {
     ret = exg_error(env, "Field must be in ['feature_type', 'feature_name']");
     goto END;
   }
   handle = *resource;
   // XGBoost reads features during the call; caller keeps ownership.
-  result = XGDMatrixSetStrFeatureInfo(handle, field,
-                                      (const char **)features, num_features);
+  result = XGDMatrixSetStrFeatureInfo(handle, field, (const char **)features, num_features);
   if (result == 0) {
     ret = ok_atom(env);
   } else {
@@ -359,8 +349,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc,
-                                         const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   char const **c_out_features = NULL;
@@ -375,8 +364,7 @@ ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc,
     goto END;
   }
 
-  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
@@ -386,8 +374,7 @@ ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc,
     goto END;
   }
 
-  if (strcmp(field, "feature_type") != 0 &&
-      strcmp(field, "feature_name") != 0) {
+  if (strcmp(field, "feature_type") != 0 && strcmp(field, "feature_name") != 0) {
     ret = exg_error(env, "Field must be in ['feature_type', 'feature_name']");
     goto END;
   }
@@ -396,8 +383,7 @@ ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc,
   result = XGDMatrixGetStrFeatureInfo(handle, field, &out_size, &c_out_features);
 
   if (result == 0) {
-    if (out_size > UINT_MAX ||
-        out_size > SIZE_MAX / sizeof(*arr)) {
+    if (out_size > UINT_MAX || out_size > SIZE_MAX / sizeof(*arr)) {
       ret = exg_error(env, "Result is too large");
       goto END;
     }
@@ -416,23 +402,12 @@ ERL_NIF_TERM EXGDMatrixGetStrFeatureInfo(ErlNifEnv *env, int argc,
           goto END;
         }
 
-        arr[i] =
-            enif_make_string(
-                env,
-                c_out_features[i],
-                ERL_NIF_LATIN1
-            );
+        arr[i] = enif_make_string(env, c_out_features[i], ERL_NIF_LATIN1);
       }
     }
 
-    ERL_NIF_TERM list =
-        out_size == 0
-            ? enif_make_list(env, 0)
-            : enif_make_list_from_array(
-                  env,
-                  arr,
-                  (unsigned)out_size
-              );
+    ERL_NIF_TERM list = out_size == 0 ? enif_make_list(env, 0)
+                                      : enif_make_list_from_array(env, arr, (unsigned)out_size);
 
     ret = exg_ok(env, list);
   } else {
@@ -451,8 +426,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixNumRow(ErlNifEnv *env, int argc,
-                              const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixNumRow(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   bst_ulong out = 0;
@@ -462,8 +436,7 @@ ERL_NIF_TERM EXGDMatrixNumRow(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
@@ -478,8 +451,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixNumCol(ErlNifEnv *env, int argc,
-                              const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixNumCol(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   bst_ulong out = 0;
@@ -489,8 +461,7 @@ ERL_NIF_TERM EXGDMatrixNumCol(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
@@ -505,8 +476,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixNumNonMissing(ErlNifEnv *env, int argc,
-                                     const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixNumNonMissing(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   bst_ulong out = 0;
@@ -516,8 +486,7 @@ ERL_NIF_TERM EXGDMatrixNumNonMissing(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
@@ -532,8 +501,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixSetInfoFromInterface(ErlNifEnv *env, int argc,
-                                            const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixSetInfoFromInterface(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   char *field = NULL;
@@ -548,8 +516,7 @@ ERL_NIF_TERM EXGDMatrixSetInfoFromInterface(ErlNifEnv *env, int argc,
     goto END;
   }
 
-  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
@@ -560,27 +527,27 @@ ERL_NIF_TERM EXGDMatrixSetInfoFromInterface(ErlNifEnv *env, int argc,
   }
 
   // Extract ArrayInterface tuple: {binary, typestr, shape, readonly}
-  if (!exg_get_array_interface_tuple(env, argv[2], &data_binary, &data_typestr,
-                                      &data_shape, &data_readonly, &error_msg)) {
+  if (!exg_get_array_interface_tuple(env, argv[2], &data_binary, &data_typestr, &data_shape,
+                                     &data_readonly, &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to extract ArrayInterface tuple");
     goto END;
   }
 
   // Build ArrayInterface JSON from components
-  if (!exg_build_array_interface_json(env, data_binary, data_typestr, data_shape,
-                                       data_readonly, &data_interface, &error_msg)) {
+  if (!exg_build_array_interface_json(env, data_binary, data_typestr, data_shape, data_readonly,
+                                      &data_interface, &error_msg)) {
     ret = exg_error(env, error_msg ? error_msg : "Failed to build data ArrayInterface");
     goto END;
   }
 
   if (strcmp(field, "label") != 0 && strcmp(field, "weight") != 0 &&
       strcmp(field, "base_margin") != 0 && strcmp(field, "group") != 0 &&
-      strcmp(field, "label_lower_bound") != 0 &&
-      strcmp(field, "label_upper_bound") != 0 &&
+      strcmp(field, "label_lower_bound") != 0 && strcmp(field, "label_upper_bound") != 0 &&
       strcmp(field, "feature_weights") != 0) {
-    ret = exg_error(env, "Field must be in ['label', 'weight', "
-                         "'base_margin','group','label_lower_bound','label_"
-                         "upper_bound','feature_weights']");
+    ret = exg_error(env,
+                    "Field must be in ['label', 'weight', "
+                    "'base_margin','group','label_lower_bound','label_"
+                    "upper_bound','feature_weights']");
     goto END;
   }
   handle = *resource;
@@ -600,8 +567,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixSaveBinary(ErlNifEnv *env, int argc,
-                                  const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixSaveBinary(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   char *fname = NULL;
@@ -612,8 +578,7 @@ ERL_NIF_TERM EXGDMatrixSaveBinary(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
@@ -639,8 +604,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixGetFloatInfo(ErlNifEnv *env, int argc,
-                                    const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixGetFloatInfo(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   char *field = NULL;
@@ -654,8 +618,7 @@ ERL_NIF_TERM EXGDMatrixGetFloatInfo(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
@@ -665,11 +628,11 @@ ERL_NIF_TERM EXGDMatrixGetFloatInfo(ErlNifEnv *env, int argc,
   }
   if (strcmp(field, "label") != 0 && strcmp(field, "weight") != 0 &&
       strcmp(field, "base_margin") != 0 && strcmp(field, "label_lower_bound") &&
-      strcmp(field, "label_upper_bound") &&
-      strcmp(field, "feature_weights") != 0) {
-    ret = exg_error(env, "Field must be in ['label', 'weight', "
-                         "'base_margin','label_lower_bound','label_"
-                         "upper_bound','feature_weights']");
+      strcmp(field, "label_upper_bound") && strcmp(field, "feature_weights") != 0) {
+    ret = exg_error(env,
+                    "Field must be in ['label', 'weight', "
+                    "'base_margin','label_lower_bound','label_"
+                    "upper_bound','feature_weights']");
     goto END;
   }
   handle = *resource;
@@ -694,8 +657,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixGetUIntInfo(ErlNifEnv *env, int argc,
-                                   const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixGetUIntInfo(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   char *field = NULL;
@@ -709,8 +671,7 @@ ERL_NIF_TERM EXGDMatrixGetUIntInfo(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
@@ -744,8 +705,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGDMatrixGetDataAsCSR(ErlNifEnv *env, int argc,
-                                    const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixGetDataAsCSR(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   bst_ulong num_non_missing = 0;
@@ -763,8 +723,7 @@ ERL_NIF_TERM EXGDMatrixGetDataAsCSR(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
@@ -785,8 +744,7 @@ ERL_NIF_TERM EXGDMatrixGetDataAsCSR(ErlNifEnv *env, int argc,
   }
   // Check allocation sizes fit in size_t
   if (num_rows > SIZE_MAX / sizeof(bst_ulong) - 1 ||
-      num_non_missing > SIZE_MAX / sizeof(unsigned) ||
-      num_non_missing > SIZE_MAX / sizeof(float)) {
+      num_non_missing > SIZE_MAX / sizeof(unsigned) || num_non_missing > SIZE_MAX / sizeof(float)) {
     ret = exg_error(env, "Matrix is too large");
     goto END;
   }
@@ -797,8 +755,7 @@ ERL_NIF_TERM EXGDMatrixGetDataAsCSR(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Failed to allocate memory");
     goto END;
   }
-  result =
-      XGDMatrixGetDataAsCSR(handle, config, out_indptr, out_indices, out_data);
+  result = XGDMatrixGetDataAsCSR(handle, config, out_indptr, out_indices, out_data);
   if (result != 0) {
     ret = exg_error(env, XGBGetLastError());
     goto END;
@@ -823,11 +780,10 @@ ERL_NIF_TERM EXGDMatrixGetDataAsCSR(ErlNifEnv *env, int argc,
     indices[i] = enif_make_uint(env, out_indices[i]);
     data[i] = enif_make_double(env, out_data[i]);
   }
-  ret =
-      exg_ok(env, enif_make_tuple3(
-                      env, enif_make_list_from_array(env, indptr, (size_t)(num_rows + 1)),
-                      enif_make_list_from_array(env, indices, (size_t)num_non_missing),
-                      enif_make_list_from_array(env, data, (size_t)num_non_missing)));
+  ret = exg_ok(env,
+               enif_make_tuple3(env, enif_make_list_from_array(env, indptr, (size_t)(num_rows + 1)),
+                                enif_make_list_from_array(env, indices, (size_t)num_non_missing),
+                                enif_make_list_from_array(env, data, (size_t)num_non_missing)));
 END:
   // Mixed allocators: enif_free for enif_alloc buffers, free for malloc buffers.
   if (config != NULL) {
@@ -858,8 +814,7 @@ END:
   return ret;
 };
 
-ERL_NIF_TERM EXGDMatrixSliceDMatrix(ErlNifEnv *env, int argc,
-                                    const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixSliceDMatrix(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   ErlNifBinary bin;
@@ -871,8 +826,7 @@ ERL_NIF_TERM EXGDMatrixSliceDMatrix(ErlNifEnv *env, int argc,
     ret = exg_error(env, "Wrong number of arguments");
     goto END;
   }
-  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE,
-                         (void *)&resource)) {
+  if (!enif_get_resource(env, argv[0], DMatrix_RESOURCE_TYPE, (void *)&resource)) {
     ret = exg_error(env, "DMatrix must be a resource");
     goto END;
   }
@@ -904,8 +858,7 @@ ERL_NIF_TERM EXGDMatrixSliceDMatrix(ErlNifEnv *env, int argc,
       goto END;
     }
   }
-  result = XGDMatrixSliceDMatrixEx(handle, (int *)bin.data, index_count, &out,
-                                   allow_groups);
+  result = XGDMatrixSliceDMatrixEx(handle, (int *)bin.data, index_count, &out, allow_groups);
   if (0 == result) {
     ret = make_DMatrix_resource(env, out);
   } else {
@@ -915,8 +868,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGProxyDMatrixCreate(ErlNifEnv *env, int argc,
-                                   const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGProxyDMatrixCreate(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   int result = -1;
   ERL_NIF_TERM ret = -1;
@@ -935,11 +887,8 @@ END:
 }
 
 // Helper to parse ArrayInterface JSON and copy data atomically
-static int exg_parse_and_copy_array_interface(
-    ErlNifEnv *env,
-    const char *json_str,
-    ERL_NIF_TERM *out_map
-) {
+static int exg_parse_and_copy_array_interface(ErlNifEnv *env, const char *json_str,
+                                              ERL_NIF_TERM *out_map) {
   int ok = 0;
   yyjson_doc *doc = NULL;
 
@@ -958,11 +907,8 @@ static int exg_parse_and_copy_array_interface(
   yyjson_val *data_arr = yyjson_obj_get(root, "data");
   yyjson_val *shape_arr = yyjson_obj_get(root, "shape");
 
-  if (!yyjson_is_uint(version_val) ||
-      yyjson_get_uint(version_val) != 3 ||
-      !yyjson_is_str(typestr_val) ||
-      !yyjson_is_arr(data_arr) ||
-      !yyjson_is_arr(shape_arr)) {
+  if (!yyjson_is_uint(version_val) || yyjson_get_uint(version_val) != 3 ||
+      !yyjson_is_str(typestr_val) || !yyjson_is_arr(data_arr) || !yyjson_is_arr(shape_arr)) {
     goto CLEANUP;
   }
 
@@ -973,8 +919,7 @@ static int exg_parse_and_copy_array_interface(
   yyjson_val *address_val = yyjson_arr_get(data_arr, 0);
   yyjson_val *readonly_val = yyjson_arr_get(data_arr, 1);
 
-  if (!yyjson_is_uint(address_val) ||
-      !yyjson_is_bool(readonly_val)) {
+  if (!yyjson_is_uint(address_val) || !yyjson_is_bool(readonly_val)) {
     goto CLEANUP;
   }
 
@@ -990,10 +935,7 @@ static int exg_parse_and_copy_array_interface(
   size_t bytes_per_elem = 0;
   const char *parse_error = NULL;
 
-  if (!exg_parse_typestr(
-          typestr,
-          &bytes_per_elem,
-          &parse_error)) {
+  if (!exg_parse_typestr(typestr, &bytes_per_elem, &parse_error)) {
     goto CLEANUP;
   }
 
@@ -1032,8 +974,7 @@ static int exg_parse_and_copy_array_interface(
   }
 
   ERL_NIF_TERM binary_term;
-  unsigned char *destination =
-      enif_make_new_binary(env, total_size, &binary_term);
+  unsigned char *destination = enif_make_new_binary(env, total_size, &binary_term);
 
   if (destination == NULL && total_size != 0) {
     goto CLEANUP;
@@ -1045,8 +986,7 @@ static int exg_parse_and_copy_array_interface(
 
   size_t typestr_len = strlen(typestr);
   ERL_NIF_TERM typestr_term;
-  unsigned char *typestr_destination =
-      enif_make_new_binary(env, typestr_len, &typestr_term);
+  unsigned char *typestr_destination = enif_make_new_binary(env, typestr_len, &typestr_term);
 
   if (typestr_destination == NULL && typestr_len != 0) {
     goto CLEANUP;
@@ -1056,10 +996,7 @@ static int exg_parse_and_copy_array_interface(
     memcpy(typestr_destination, typestr, typestr_len);
   }
 
-  ERL_NIF_TERM shape_term =
-      enif_make_list1(
-          env,
-          enif_make_uint64(env, (ErlNifUInt64)dim));
+  ERL_NIF_TERM shape_term = enif_make_list1(env, enif_make_uint64(env, (ErlNifUInt64)dim));
 
   ok = exg_make_array_interface_map(env, binary_term, typestr_term, shape_term, out_map);
 
@@ -1071,8 +1008,7 @@ CLEANUP:
   return ok;
 }
 
-ERL_NIF_TERM EXGDMatrixGetQuantileCut(ErlNifEnv *env, int argc,
-                                      const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGDMatrixGetQuantileCut(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   DMatrixHandle handle;
   DMatrixHandle **resource = NULL;
   char *config = NULL;
