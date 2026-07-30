@@ -1,6 +1,8 @@
 #include "exgboost.h"
 
 static int load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
+  exg_init_atoms(env);
+
   DMatrix_RESOURCE_TYPE = enif_open_resource_type(
       env, NULL, "DMatrix_RESOURCE_TYPE", DMatrix_RESOURCE_TYPE_cleanup,
       (ErlNifResourceFlags)(ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER), NULL);
@@ -15,6 +17,8 @@ static int load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
 
 static int upgrade(ErlNifEnv *env, void **priv_data, void **old_priv_data,
                    ERL_NIF_TERM load_info) {
+  exg_init_atoms(env);
+
   DMatrix_RESOURCE_TYPE = enif_open_resource_type(
       env, NULL, "DMatrix_RESOURCE_TYPE", DMatrix_RESOURCE_TYPE_cleanup,
       ERL_NIF_RT_TAKEOVER, NULL);
@@ -48,8 +52,6 @@ static ErlNifFunc nif_funcs[] = {
     {"dmatrix_num_non_missing", 1, EXGDMatrixNumNonMissing},
     {"dmatrix_set_info_from_interface", 3, EXGDMatrixSetInfoFromInterface},
     {"dmatrix_save_binary", 3, EXGDMatrixSaveBinary},
-    {"get_binary_address", 1, exg_get_binary_address},
-    {"get_binary_from_address", 2, exg_get_binary_from_address},
     {"dmatrix_get_float_info", 2, EXGDMatrixGetFloatInfo},
     {"dmatrix_get_uint_info", 2, EXGDMatrixGetUIntInfo},
     {"dmatrix_get_data_as_csr", 2, EXGDMatrixGetDataAsCSR},
@@ -74,9 +76,9 @@ static ErlNifFunc nif_funcs[] = {
     {"booster_slice", 4, EXGBoosterSlice},
     {"booster_predict_from_dmatrix", 3, EXGBoosterPredictFromDMatrix,
      ERL_NIF_DIRTY_JOB_CPU_BOUND},
-    {"booster_predict_from_dense", 4, EXGBoosterPredictFromDense,
+    {"booster_predict_from_dense", 7, EXGBoosterPredictFromDense,
      ERL_NIF_DIRTY_JOB_CPU_BOUND},
-    {"booster_predict_from_csr", 7, EXGBoosterPredictFromCSR,
+    {"booster_predict_from_csr", 16, EXGBoosterPredictFromCSR,
      ERL_NIF_DIRTY_JOB_CPU_BOUND},
     {"booster_load_model", 1, EXGBoosterLoadModel, ERL_NIF_DIRTY_JOB_IO_BOUND},
     {"booster_save_model", 2, EXGBoosterSaveModel, ERL_NIF_DIRTY_JOB_IO_BOUND},

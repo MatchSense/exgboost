@@ -2,10 +2,79 @@ defmodule EXGBoostTest do
   alias EXGBoost.DMatrix
   alias EXGBoost.Booster
   use ExUnit.Case, async: true
+
   doctest EXGBoost
+  doctest EXGBoost.ArrayInterface
 
   setup do
     %{key: Nx.Random.key(42)}
+  end
+
+  test "small tensor predictions remain stable under GC pressure" do
+    training_x =
+      Nx.tensor(
+        [
+          [0.0, 0.0, 0.0, 0.0],
+          [0.0, 0.0, 1.0, 1.0],
+          [0.0, 1.0, 0.0, 1.0],
+          [0.0, 1.0, 1.0, 0.0],
+          [1.0, 0.0, 0.0, 1.0],
+          [1.0, 0.0, 1.0, 0.0],
+          [1.0, 1.0, 0.0, 0.0],
+          [1.0, 1.0, 1.0, 1.0]
+        ],
+        type: {:f, 32}
+      )
+
+    training_y =
+      Nx.tensor(
+        [0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0],
+        type: {:f, 32}
+      )
+
+    booster =
+      EXGBoost.train(
+        training_x,
+        training_y,
+        num_boost_rounds: 10,
+        tree_method: :hist,
+        objective: :reg_squarederror,
+        seed: 0,
+        verbose_eval: false
+      )
+
+    sample =
+      Nx.tensor(
+        [[1.0, 0.0, 1.0, 0.0]],
+        type: {:f, 32}
+      )
+
+    baseline =
+      EXGBoost.inplace_predict(
+        booster,
+        sample,
+        validate_features: false
+      )
+
+    for iteration <- 1..100 do
+      # Create heap pressure before forcing collection.
+      _pressure =
+        for _ <- 1..1_000 do
+          :crypto.strong_rand_bytes(128)
+        end
+
+      :erlang.garbage_collect(self())
+
+      prediction =
+        EXGBoost.inplace_predict(
+          booster,
+          sample,
+          validate_features: false
+        )
+
+      assert Nx.all_close(prediction, baseline),
+             "prediction changed on iteration #{iteration}"
+    end
   end
 
   test "dmatrix_from_tensor", context do
@@ -391,9 +460,8 @@ defmodule EXGBoostTest do
   test "array interface get tensor" do
     tensor = Nx.tensor([[1, 2, 3], [4, 5, 6]])
     array_interface = EXGBoost.ArrayInterface.from_tensor(tensor)
-    # Set this to nil so we can test the get_tensor reconstruction
-    array_interface = struct(array_interface, tensor: nil)
 
+    # Test that get_tensor reconstructs the tensor from the stored binary
     assert EXGBoost.ArrayInterface.get_tensor(array_interface) == tensor
   end
 
@@ -402,6 +470,7 @@ defmodule EXGBoostTest do
       EXGBoost.ArrayInterface.from_map(%{
         "typestr" => "<f4",
         "shape" => [2, 2],
+        # Address is ignored, only readonly is extracted
         "data" => [123, true],
         "version" => 3,
         "strides" => nil,
@@ -410,21 +479,75 @@ defmodule EXGBoostTest do
 
     assert arr_int.typestr == "<f4"
     assert arr_int.shape == {2, 2}
-    assert arr_int.address == 123
+    # Address field has been removed - we no longer store pointer addresses
     assert arr_int.readonly == true
     assert arr_int.version == 3
   end
 
-  test "array interface get_tensor raises on unsupported endianness" do
-    assert_raise ArgumentError, ~r/Unsupported endianness/, fn ->
+  test "array interface get_tensor raises on missing binary" do
+    assert_raise ArgumentError, ~r/Cannot reconstruct tensor/, fn ->
       EXGBoost.ArrayInterface.get_tensor(%EXGBoost.ArrayInterface{
-        typestr: ">f4",
+        typestr: "<f4",
         shape: {1},
-        address: 1,
         readonly: true,
-        tensor: nil,
-        binary: <<>>
+        binary: nil
       })
+    end
+  end
+
+  test "array interface parse_typestr validates format" do
+    # Valid typestrs should work (non-bang version returns tuples)
+    assert {:ok, {:s, 64}} = EXGBoost.ArrayInterface.parse_typestr("<i8")
+    assert {:ok, {:u, 32}} = EXGBoost.ArrayInterface.parse_typestr("<u4")
+    assert {:ok, {:f, 32}} = EXGBoost.ArrayInterface.parse_typestr("<f4")
+    assert {:ok, {:f, 64}} = EXGBoost.ArrayInterface.parse_typestr("<f8")
+    assert {:ok, {:c, 128}} = EXGBoost.ArrayInterface.parse_typestr("<c16")
+    assert {:ok, {:s, 8}} = EXGBoost.ArrayInterface.parse_typestr("|i1")
+    assert {:ok, {:u, 8}} = EXGBoost.ArrayInterface.parse_typestr("|u1")
+
+    # Bang version returns values directly
+    assert {:s, 64} = EXGBoost.ArrayInterface.parse_typestr!("<i8")
+    assert {:f, 32} = EXGBoost.ArrayInterface.parse_typestr!("<f4")
+
+    # Big-endian should be rejected
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr(">f4")
+    assert reason =~ ~r/(big-endian|unsupported)/i
+
+    # Byte-order-independent marker (|) only valid for single-byte types
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr("|i4")
+    assert reason =~ ~r/(byte-order-independent|multi-byte)/i
+
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr("|f8")
+    assert reason =~ ~r/(byte-order-independent|multi-byte)/i
+
+    # Non-bang version returns errors
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr("<x4")
+    assert reason =~ "Unsupported typestr type code"
+
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr("<fABC")
+    assert reason =~ "Invalid byte count"
+
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr("<f")
+    assert reason =~ "Invalid typestr"
+
+    assert {:error, reason} = EXGBoost.ArrayInterface.parse_typestr("")
+    assert reason =~ "Invalid typestr"
+
+    # Bang version raises on errors
+    assert_raise ArgumentError, ~r/Unsupported typestr type code \"x\" in \"<x4\"/, fn ->
+      EXGBoost.ArrayInterface.parse_typestr!("<x4")
+    end
+
+    assert_raise ArgumentError, ~r/Invalid byte count/, fn ->
+      EXGBoost.ArrayInterface.parse_typestr!("<fABC")
+    end
+
+    assert_raise ArgumentError, ~r/Invalid typestr/, fn ->
+      EXGBoost.ArrayInterface.parse_typestr!("<f")
+    end
+
+    assert_raise ArgumentError, ~r/Invalid typestr/, fn ->
+      EXGBoost.ArrayInterface.parse_typestr!("")
     end
   end
 

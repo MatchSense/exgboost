@@ -204,6 +204,8 @@ If you are contributing to the library and need to compile locally or choose to 
 - CMake
 - If MacOS: `brew install libomp`
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guidelines, including NIF safety requirements and testing procedures.
+
 When you run `mix compile`, the `xgboost` shared library will be compiled, so the first time you compile your project will take longer than subsequent compilations.
 
 You also need to set `CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true` before the first local compilation, otherwise you will get an error related to a missing checksum file.
