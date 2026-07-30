@@ -1,8 +1,12 @@
 name: precompile
 
 on:
-  - push
-  - workflow_dispatch
+  push:
+    tags:
+      - "*.*.*"
+
+permissions:
+  contents: write
 
 jobs:
   linux:
