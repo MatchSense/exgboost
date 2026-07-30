@@ -11,6 +11,7 @@ RUN apt-get update && \
   apt-get install --yes --no-install-recommends \
     build-essential \
     ca-certificates \
+    clang-format \
     cmake \
     curl \
     g++-14 \
