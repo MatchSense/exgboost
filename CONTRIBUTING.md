@@ -356,11 +356,12 @@ Large-data tests can reveal memory issues, but they do not prove that no memory 
 ## Pull Request Checklist
 
 - [ ] Tests pass: `mix test`
-- [ ] Code formatted: `mix format`
+- [ ] Code formatted, for Elixir use `mix format` and for C use `clang-format`.  If you are developing using VSCode make
+      use of the extensions inside the supplied devcontainer and ensure you `formatOnSave`.
 - [ ] No compiler warnings: `mix compile --warnings-as-errors`
 - [ ] Added tests for new functionality
 - [ ] Added invalid-input and boundary tests for NIF changes
-- [ ] Updated CHANGELOG.md
+- [ ] Updated `CHANGELOG.md`
 - [ ] NIF changes validated with safety tests
 - [ ] Native code tested under AddressSanitizer or Valgrind where supported
 - [ ] No native addresses are exposed or reused across NIF calls
