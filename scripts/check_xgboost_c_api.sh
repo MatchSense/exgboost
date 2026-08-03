@@ -24,7 +24,15 @@ extract_signatures() {
       }
     }
   ' "$header" \
-    | sed -E 's/[[:space:]]+/ /g; s/^[[:space:]]+//; s/[[:space:]]+$//' \
+    | sed -E '
+        s/[[:space:]]+/ /g
+        s/^[[:space:]]+//
+        s/[[:space:]]+$//
+        s/[[:space:]]*\*[[:space:]]*/\*/g
+        s/[[:space:]]*,[[:space:]]*/,/g
+        s/\([[:space:]]*/(/g
+        s/[[:space:]]*\)/)/g
+      ' \
     | awk '
         {
           if (match($0, /XG[A-Za-z0-9_]+[[:space:]]*\(/)) {
@@ -163,15 +171,21 @@ if (( ${#missing_in_header[@]} > 0 )); then
 fi
 
 if [[ -n "$shared_lib" && -f "$shared_lib" && "$(command -v nm || true)" != "" ]]; then
+  declare -A exported_map=()
+
   if [[ "$(uname -s)" == "Darwin" ]]; then
-    mapfile -t exported_symbols < <(nm -gU "$shared_lib" | awk '{print $3}' | sed 's/^_//' | sort -u)
+    while IFS= read -r symbol; do
+      [[ -n "$symbol" ]] && exported_map["$symbol"]=1
+    done < <(nm -gU "$shared_lib" | awk '{print $3}' | sed 's/^_//' | sort -u)
   else
-    mapfile -t exported_symbols < <(nm -D --defined-only "$shared_lib" | awk '{print $3}' | sort -u)
+    while IFS= read -r symbol; do
+      [[ -n "$symbol" ]] && exported_map["$symbol"]=1
+    done < <(nm -D --defined-only "$shared_lib" | awk '{print $3}' | sort -u)
   fi
 
   missing_in_lib=()
   for symbol in "${used_symbols[@]}"; do
-    if ! printf '%s\n' "${exported_symbols[@]}" | grep -qx "$symbol"; then
+    if [[ -z "${exported_map[$symbol]+x}" ]]; then
       missing_in_lib+=("$symbol")
     fi
   done
