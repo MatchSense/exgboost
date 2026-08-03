@@ -332,6 +332,10 @@ defmodule EXGBoostTest do
 
     EXGBoost.write_model(booster, "test")
     assert File.exists?("test.json")
+
+    assert %{"learner" => _learner, "version" => _version} =
+             "test.json" |> File.read!() |> Jason.decode!()
+
     bst = EXGBoost.read_model("test.json")
     assert is_struct(bst, EXGBoost.Booster)
     File.rm!("test.json")
@@ -395,6 +399,8 @@ defmodule EXGBoostTest do
 
     buffer = EXGBoost.dump_model(booster)
     assert is_binary(buffer)
+    assert %{"learner" => _learner, "version" => _version} = Jason.decode!(buffer)
+
     bst = EXGBoost.load_model(buffer)
     assert is_struct(bst, EXGBoost.Booster)
   end
