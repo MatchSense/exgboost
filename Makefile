@@ -32,7 +32,7 @@ EXGBOOST_SO = $(PRIV_DIR)/libexgboost.so
 EXGBOOST_LIB_DIR = $(PRIV_DIR)/lib
 
 # Build flags
-CFLAGS = -I$(EXGBOOST_DIR)/include -I$(XGBOOST_LIB_DIR)/include -I$(XGBOOST_DIR) $(if $(ERTS_INCLUDE_DIR),-I$(ERTS_INCLUDE_DIR)) -fPIC -O3 --verbose -shared -std=c11
+CFLAGS = -I$(EXGBOOST_DIR)/include -I$(XGBOOST_LIB_DIR)/include -I$(XGBOOST_DIR) $(if $(ERTS_INCLUDE_DIR),-I$(ERTS_INCLUDE_DIR)) -fPIC -O3 -shared -std=c11
 
 C_SRCS = $(wildcard $(EXGBOOST_DIR)/src/*.c) $(wildcard $(EXGBOOST_DIR)/include/*.h)
 
