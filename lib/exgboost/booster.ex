@@ -360,8 +360,8 @@ defmodule EXGBoost.Booster do
     EXGBoost.NIF.booster_boost_one_iter(
       booster.ref,
       dmatrix.ref,
-      Nx.to_binary(grad),
-      Nx.to_binary(hess)
+      grad |> ArrayInterface.from_tensor() |> ArrayInterface.to_tuple(),
+      hess |> ArrayInterface.from_tensor() |> ArrayInterface.to_tuple()
     )
   end
 
