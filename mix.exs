@@ -14,7 +14,7 @@ defmodule EXGBoost.MixProject do
       # NIF Versions correspond to OTP Releases
       # https://github.com/erlang/otp/blob/d3aa6c044c3927f011fb76ac087d5ce0e814954c/erts/emulator/beam/erl_nif.h#L57
       make_precompiler_nif_versions: [
-        versions: ["2.15", "2.16", "2.17", "2.18"]
+        versions: ["2.17", "2.18"]
       ],
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
