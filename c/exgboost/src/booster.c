@@ -220,18 +220,18 @@ ERL_NIF_TERM EXGBoosterUpdateOneIter(ErlNifEnv *env, int argc, const ERL_NIF_TER
 END:
   return ret;
 }
-ERL_NIF_TERM EXGBoosterBoostOneIter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-  ErlNifBinary grad_bin;
-  ErlNifBinary hess_bin;
+
+ERL_NIF_TERM EXGBoosterTrainOneIter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   BoosterHandle booster;
   BoosterHandle **booster_resource = NULL;
   DMatrixHandle dtrain;
   DMatrixHandle **dtrain_resource = NULL;
-  float *grad = NULL;
-  float *hess = NULL;
-  unsigned grad_len = 0;
-  unsigned hess_len = 0;
-  bst_ulong len;
+  ERL_NIF_TERM grad_binary, grad_typestr, grad_shape, grad_readonly;
+  ERL_NIF_TERM hess_binary, hess_typestr, hess_shape, hess_readonly;
+  char *grad = NULL;
+  char *hess = NULL;
+  const char *error_msg = NULL;
+  int iteration = 0;
   ERL_NIF_TERM ret = -1;
   int result = -1;
   if (4 != argc) {
@@ -248,29 +248,48 @@ ERL_NIF_TERM EXGBoosterBoostOneIter(ErlNifEnv *env, int argc, const ERL_NIF_TERM
     goto END;
   }
   dtrain = *dtrain_resource;
-  if (!enif_inspect_binary(env, argv[2], &grad_bin)) {
-    ret = exg_error(env, "Grad must be a binary");
+
+  if (!exg_get_array_interface_tuple(env, argv[2], &grad_binary, &grad_typestr, &grad_shape,
+                                     &grad_readonly, &error_msg)) {
+    ret = exg_error(env, error_msg);
     goto END;
   }
-  if (!enif_inspect_binary(env, argv[3], &hess_bin)) {
-    ret = exg_error(env, "Hess must be a binary");
+  if (!exg_build_array_interface_json(env, grad_binary, grad_typestr, grad_shape, grad_readonly,
+                                      &grad, &error_msg)) {
+    ret = exg_error(env, error_msg);
     goto END;
   }
-  grad = (float *)grad_bin.data;
-  hess = (float *)hess_bin.data;
-  grad_len = grad_bin.size / sizeof(float);
-  hess_len = hess_bin.size / sizeof(float);
-  if (grad_len != hess_len) {
-    ret = exg_error(env, "Grad and Hess must have the same length");
+
+  if (!exg_get_array_interface_tuple(env, argv[3], &hess_binary, &hess_typestr, &hess_shape,
+                                     &hess_readonly, &error_msg)) {
+    ret = exg_error(env, error_msg);
     goto END;
   }
-  result = XGBoosterBoostOneIter(booster, dtrain, grad, hess, (bst_ulong)grad_len);
+  if (!exg_build_array_interface_json(env, hess_binary, hess_typestr, hess_shape, hess_readonly,
+                                      &hess, &error_msg)) {
+    ret = exg_error(env, error_msg);
+    goto END;
+  }
+
+  result = XGBoosterBoostedRounds(booster, &iteration);
+  if (result != 0) {
+    ret = exg_error(env, XGBGetLastError());
+    goto END;
+  }
+
+  result = XGBoosterTrainOneIter(booster, dtrain, iteration, grad, hess);
   if (result == 0) {
     ret = ok_atom(env);
   } else {
     ret = exg_error(env, XGBGetLastError());
   }
 END:
+  if (grad != NULL) {
+    enif_free(grad);
+  }
+  if (hess != NULL) {
+    enif_free(hess);
+  }
   return ret;
 }
 

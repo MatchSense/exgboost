@@ -282,11 +282,16 @@ defmodule EXGBoost.NIF do
     do: :erlang.nif_error(:not_implemented)
 
   @doc """
-  Update the model, by directly specify gradient and second order gradient, this can be used to replace UpdateOneIter, to support customized loss function
+  Update the model with a custom gradient and second-order gradient.
 
-  Grad and hess must be binaries of Nx.Tensor float32
+  Grad and hess must be array-interface tuples for float32 tensors.
   """
-  @spec booster_boost_one_iter(booster_reference(), dmatrix_reference(), binary(), binary()) ::
+  @spec booster_boost_one_iter(
+          booster_reference(),
+          dmatrix_reference(),
+          array_interface_tuple(),
+          array_interface_tuple()
+        ) ::
           :ok | {:error, String.t()}
   def booster_boost_one_iter(_booster_handle, _dmatrix_handle, _grad, _hess),
     do: :erlang.nif_error(:not_implemented)

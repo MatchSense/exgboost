@@ -7,14 +7,18 @@ TEMP ?= $(HOME)/.cache
 MIX_ENV ?= dev
 XGBOOST_CACHE ?= $(TEMP)/exgboost
 XGBOOST_GIT_REPO ?= https://github.com/dmlc/xgboost.git
-# v3.1.3 tagged release
-XGBOOST_GIT_REV ?= v3.1.3
-OLD_XGBOOST_GIT_REV ?= v3.0.5
+
+# Use tagged releases in the checks below.
+XGBOOST_GIT_REV ?= v3.2.0
+OLD_XGBOOST_GIT_REV ?= v3.1.3
 NEW_XGBOOST_GIT_REV ?= $(XGBOOST_GIT_REV)
+
 XGBOOST_NS = xgboost-$(XGBOOST_GIT_REV)
 XGBOOST_DIR = $(XGBOOST_CACHE)/$(XGBOOST_NS)
 XGBOOST_LIB_DIR = $(XGBOOST_DIR)/build/xgboost
 XGBOOST_LIB_DIR_FLAG = $(XGBOOST_LIB_DIR)/exgboost.ok
+
+.PHONY: check-xgboost-c-api compare-xgboost-c-api clean
 
 # Set build type based on MIX_ENV
 ifeq ($(MIX_ENV), prod)
@@ -54,13 +58,13 @@ else
 endif
 
 $(EXGBOOST_SO): $(EXGBOOST_CACHE_SO)
-	@mkdir -p $(PRIV_DIR)
-	cp -a $(abspath $(EXGBOOST_CACHE_LIB_DIR)) $(EXGBOOST_LIB_DIR) ; \
+	@mkdir -p $(EXGBOOST_LIB_DIR)
+	cp -a $(abspath $(EXGBOOST_CACHE_LIB_DIR))/. $(EXGBOOST_LIB_DIR)/ ; \
 	cp -a $(abspath $(EXGBOOST_CACHE_SO)) $(EXGBOOST_SO) ;
 
 $(EXGBOOST_CACHE_SO): $(XGBOOST_LIB_DIR_FLAG) $(C_SRCS)
-	@mkdir -p cache
-	cp -R $(XGBOOST_LIB_DIR) $(EXGBOOST_CACHE_LIB_DIR)
+	@mkdir -p $(EXGBOOST_CACHE_LIB_DIR)
+	cp -R $(XGBOOST_LIB_DIR)/. $(EXGBOOST_CACHE_LIB_DIR)/
 	cp $(XGBOOST_DIR)/lib/$(LIBXGBOOST) $(EXGBOOST_CACHE_LIB_DIR)
 	$(CC) $(CFLAGS) $(wildcard $(EXGBOOST_DIR)/src/*.c) $(LDFLAGS) -o $(EXGBOOST_CACHE_SO)
 	$(POST_INSTALL)
@@ -85,7 +89,9 @@ $(XGBOOST_LIB_DIR_FLAG): $(XGBOOST_DIR)/.git
 	touch $(XGBOOST_LIB_DIR_FLAG)
 
 check-xgboost-c-api: $(XGBOOST_LIB_DIR_FLAG)
-	./scripts/check_xgboost_c_api.sh "$(XGBOOST_LIB_DIR)/include"
+	./scripts/check_xgboost_c_api.sh \
+		"$(XGBOOST_LIB_DIR)/include" \
+		"$(XGBOOST_LIB_DIR)/lib/$(LIBXGBOOST)"
 
 compare-xgboost-c-api:
 	@set -eu; \

@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## MORE UNRELEASED
+
+### Added
+
+- Nothing
+
+### Updated
+
+- Updated the bundled XGBoost release from 3.1.3 to 3.2.0.
+- Model persistence now uses XGBoost's stable JSON/UBJ model format while retaining support for loading legacy serialized snapshots.
+- Custom-gradient training now uses `XGBoosterTrainOneIter`, replacing the deprecated `XGBoosterBoostOneIter` API.
+- XGBoost C API revision checks now ignore formatting-only declaration changes and validate symbols exported by the built shared library.
+- Incremental builds now refresh the packaged XGBoost library instead of nesting the new library under an existing `priv/lib` directory.
+- Fix precompiled nif download; tags now X.Y.Z not vX.Y.Z.
+- Remove older nif versions from precompiled list.
+- Ensure checksum SHA's are part of the precompiled packages.
+
+### Removed
+
+- Nothing.
+
 ## 0.10.3
 
 ### Added

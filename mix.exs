@@ -9,12 +9,12 @@ defmodule EXGBoost.MixProject do
       version: @version,
       make_precompiler: {:nif, CCPrecompiler},
       make_precompiler_url:
-        "https://github.com/iperks/exgboost/releases/download/v#{@version}/@{artefact_filename}",
+        "https://github.com/iperks/exgboost/releases/download/#{@version}/@{artefact_filename}",
       make_precompiler_priv_paths: ["libexgboost.*", "lib"],
       # NIF Versions correspond to OTP Releases
       # https://github.com/erlang/otp/blob/d3aa6c044c3927f011fb76ac087d5ce0e814954c/erts/emulator/beam/erl_nif.h#L57
       make_precompiler_nif_versions: [
-        versions: ["2.15", "2.16", "2.17", "2.18"]
+        versions: ["2.17", "2.18"]
       ],
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,

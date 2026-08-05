@@ -332,6 +332,10 @@ defmodule EXGBoostTest do
 
     EXGBoost.write_model(booster, "test")
     assert File.exists?("test.json")
+
+    assert %{"learner" => _learner, "version" => _version} =
+             "test.json" |> File.read!() |> Jason.decode!()
+
     bst = EXGBoost.read_model("test.json")
     assert is_struct(bst, EXGBoost.Booster)
     File.rm!("test.json")
@@ -395,8 +399,42 @@ defmodule EXGBoostTest do
 
     buffer = EXGBoost.dump_model(booster)
     assert is_binary(buffer)
+    assert %{"learner" => _learner, "version" => _version} = Jason.decode!(buffer)
+
     bst = EXGBoost.load_model(buffer)
     assert is_struct(bst, EXGBoost.Booster)
+  end
+
+  test "load_model accepts legacy serialized snapshots", context do
+    nrows = :rand.uniform(10)
+    ncols = :rand.uniform(10)
+    {x, new_key} = Nx.Random.normal(context[:key], 0, 1, shape: {nrows, ncols})
+    {y, _new_key} = Nx.Random.normal(new_key, 0, 1, shape: {nrows})
+
+    booster =
+      EXGBoost.train(x, y,
+        num_boost_rounds: 2,
+        tree_method: :hist,
+        eval_metric: :rmse
+      )
+
+    snapshot =
+      EXGBoost.NIF.booster_serialize_to_buffer(booster.ref)
+      |> EXGBoost.Internal.unwrap!()
+
+    assert %EXGBoost.Booster{} = EXGBoost.load_model(snapshot)
+  end
+
+  test "boost trains with custom gradient and Hessian" do
+    x = Nx.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], type: {:f, 32})
+    y = Nx.tensor([0.0, 1.0, 0.0], type: {:f, 32})
+    dmatrix = DMatrix.from_tensor(x, y, format: :dense)
+    booster = Booster.booster(dmatrix, tree_method: :hist)
+    gradient = Nx.tensor([0.1, -0.2, 0.1], type: {:f, 32})
+    hessian = Nx.tensor([1.0, 1.0, 1.0], type: {:f, 32})
+
+    assert :ok = Booster.boost(booster, dmatrix, gradient, hessian)
+    assert Booster.get_boosted_rounds(booster) == 1
   end
 
   test "load_model accepts model artifacts produced by dump_weights", context do

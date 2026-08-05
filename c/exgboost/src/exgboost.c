@@ -57,7 +57,7 @@ static ErlNifFunc nif_funcs[] = {
     {"booster_set_param", 3, EXGBoosterSetParam},
     {"booster_get_num_feature", 1, EXGBoosterGetNumFeature},
     {"booster_update_one_iter", 3, EXGBoosterUpdateOneIter, ERL_NIF_DIRTY_JOB_CPU_BOUND},
-    {"booster_boost_one_iter", 4, EXGBoosterBoostOneIter, ERL_NIF_DIRTY_JOB_CPU_BOUND},
+    {"booster_boost_one_iter", 4, EXGBoosterTrainOneIter, ERL_NIF_DIRTY_JOB_CPU_BOUND},
     {"booster_eval_one_iter", 4, EXGBoosterEvalOneIter, ERL_NIF_DIRTY_JOB_CPU_BOUND},
     {"booster_get_attr_names", 1, EXGBoosterGetAttrNames},
     {"booster_get_attr", 2, EXGBoosterGetAttr},
