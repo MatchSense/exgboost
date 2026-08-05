@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Custom-gradient training now uses `XGBoosterTrainOneIter`, replacing the deprecated `XGBoosterBoostOneIter` API.
 - XGBoost C API revision checks now ignore formatting-only declaration changes and validate symbols exported by the built shared library.
 - Incremental builds now refresh the packaged XGBoost library instead of nesting the new library under an existing `priv/lib` directory.
+- Fix precompiled nif download; tags now X.Y.Z not vX.Y.Z.
+- Remove older nif versions from precompiled list.
 
 ### Removed
 
