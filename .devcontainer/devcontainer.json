@@ -14,7 +14,8 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "jakebecker.elixir-ls"
+        "jakebecker.elixir-ls",
+        "xaver.clang-format"
       ]
     }
   },

@@ -1,11 +1,9 @@
 #include "booster.h"
 
-ERL_NIF_TERM EXGBoostVersion(ErlNifEnv *env, int argc,
-                             const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBoostVersion(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   int major, minor, patch;
   XGBoostVersion(&major, &minor, &patch);
-  return exg_ok(env, enif_make_tuple3(env, enif_make_int(env, major),
-                                      enif_make_int(env, minor),
+  return exg_ok(env, enif_make_tuple3(env, enif_make_int(env, major), enif_make_int(env, minor),
                                       enif_make_int(env, patch)));
 }
 
@@ -30,8 +28,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBSetGlobalConfig(ErlNifEnv *env, int argc,
-                                 const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBSetGlobalConfig(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   char *config = NULL;
   int result = -1;
   ERL_NIF_TERM ret = 0;
@@ -57,8 +54,7 @@ END:
   return ret;
 }
 
-ERL_NIF_TERM EXGBGetGlobalConfig(ErlNifEnv *env, int argc,
-                                 const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM EXGBGetGlobalConfig(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   const char *out = NULL;
   int result = -1;
   ERL_NIF_TERM ret = 0;

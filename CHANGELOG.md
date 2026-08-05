@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## UNRELEASED
+
+### Added
+
+- `clang-format` command added to dev container Dockerfile.
+- `.clang-format` file from `xgboost` Github repo itself added as the default formatting of C files in this repo.
+- `xaver.clang-format"` vscode extension added to repo.
+
+### Updated
+
+- Formatting pass across all source and header files in `c/exgboost` directory - formatting change only no code changes.
+- Formatting information added to `CHANGELOG.md`.
+
+### Removed
+
+- Nothing.
+
 ## 0.10.2
 
 ### Added

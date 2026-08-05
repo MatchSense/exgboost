@@ -1,13 +1,12 @@
 #include "utils.h"
+
 #include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdint.h>
 // Ensure bst_ulong and ErlNifUInt64 are both 64-bit for safe conversions
-_Static_assert(
-    sizeof(bst_ulong) == sizeof(ErlNifUInt64),
-    "bst_ulong and ErlNifUInt64 must both be 64-bit"
-);
+_Static_assert(sizeof(bst_ulong) == sizeof(ErlNifUInt64),
+               "bst_ulong and ErlNifUInt64 must both be 64-bit");
 
 // Cached atoms
 static ERL_NIF_TERM ATOM_TRUE;
@@ -104,8 +103,7 @@ int exg_get_list(ErlNifEnv *env, ERL_NIF_TERM term, double **out) {
   return 1;
 }
 
-int exg_get_string_list(ErlNifEnv *env, ERL_NIF_TERM term, char ***out,
-                        unsigned *len) {
+int exg_get_string_list(ErlNifEnv *env, ERL_NIF_TERM term, char ***out, unsigned *len) {
   ERL_NIF_TERM head, tail;
   int i = 0;
   if (!enif_get_list_length(env, term, len)) {
@@ -128,8 +126,7 @@ int exg_get_string_list(ErlNifEnv *env, ERL_NIF_TERM term, char ***out,
   return 1;
 }
 
-int exg_get_dmatrix_list(ErlNifEnv *env, ERL_NIF_TERM term,
-                         DMatrixHandle **dmats, unsigned *len) {
+int exg_get_dmatrix_list(ErlNifEnv *env, ERL_NIF_TERM term, DMatrixHandle **dmats, unsigned *len) {
   ERL_NIF_TERM head, tail;
   int i = 0;
   if (!enif_get_list_length(env, term, len)) {
@@ -141,8 +138,7 @@ int exg_get_dmatrix_list(ErlNifEnv *env, ERL_NIF_TERM term,
   }
   while (enif_get_list_cell(env, term, &head, &tail)) {
     DMatrixHandle **resource = NULL;
-    if (!enif_get_resource(env, head, DMatrix_RESOURCE_TYPE,
-                           (void *)&(resource))) {
+    if (!enif_get_resource(env, head, DMatrix_RESOURCE_TYPE, (void *)&(resource))) {
       exg_free_dmatrix_list(*dmats);
       *dmats = NULL;
       return 0;
@@ -194,15 +190,8 @@ static int exg_get_boolean(ErlNifEnv *env, ERL_NIF_TERM term, int *value) {
 // - Element size: Any positive integer that fits in size_t is accepted syntactically.
 //   XGBoost will validate whether it supports the specific type/width combination.
 // - The '|' marker is only valid for single-byte types (width 1).
-int exg_parse_typestr(
-    const char *typestr,
-    size_t *element_size_out,
-    const char **error_msg
-) {
-  if (typestr == NULL ||
-      typestr[0] == '\0' ||
-      typestr[1] == '\0' ||
-      typestr[2] == '\0') {
+int exg_parse_typestr(const char *typestr, size_t *element_size_out, const char **error_msg) {
+  if (typestr == NULL || typestr[0] == '\0' || typestr[1] == '\0' || typestr[2] == '\0') {
     *error_msg = "Typestr must have the form '<f4', '<i8', or '|u1'";
     return 0;
   }
@@ -220,12 +209,8 @@ int exg_parse_typestr(
     return 0;
   }
 
-  if (type_code != 'i' &&
-      type_code != 'u' &&
-      type_code != 'f' &&
-      type_code != 'c') {
-    *error_msg =
-        "Typestr type must be 'i', 'u', 'f', or 'c'";
+  if (type_code != 'i' && type_code != 'u' && type_code != 'f' && type_code != 'c') {
+    *error_msg = "Typestr type must be 'i', 'u', 'f', or 'c'";
     return 0;
   }
 
@@ -235,8 +220,7 @@ int exg_parse_typestr(
    */
   for (const char *cursor = size_text; *cursor != '\0'; ++cursor) {
     if (!isdigit((unsigned char)*cursor)) {
-      *error_msg =
-          "Typestr element size must contain decimal digits only";
+      *error_msg = "Typestr element size must contain decimal digits only";
       return 0;
     }
   }
@@ -245,11 +229,7 @@ int exg_parse_typestr(
   char *end = NULL;
   uintmax_t parsed = strtoumax(size_text, &end, 10);
 
-  if (errno == ERANGE ||
-      end == size_text ||
-      *end != '\0' ||
-      parsed == 0 ||
-      parsed > SIZE_MAX) {
+  if (errno == ERANGE || end == size_text || *end != '\0' || parsed == 0 || parsed > SIZE_MAX) {
     *error_msg = "Invalid typestr element size";
     return 0;
   }
@@ -258,8 +238,7 @@ int exg_parse_typestr(
 
   // The byte-order-independent marker '|' is only valid for single-byte types
   if (endianness == '|' && element_size != 1) {
-    *error_msg =
-        "Byte-order-independent marker '|' is only valid for single-byte types";
+    *error_msg = "Byte-order-independent marker '|' is only valid for single-byte types";
     return 0;
   }
 
@@ -268,8 +247,8 @@ int exg_parse_typestr(
 }
 
 // Helper: Build shape JSON string dynamically
-static int exg_shape_to_json(ErlNifEnv *env, ERL_NIF_TERM shape_term,
-                             char **json_out, const char **error_msg) {
+static int exg_shape_to_json(ErlNifEnv *env, ERL_NIF_TERM shape_term, char **json_out,
+                             const char **error_msg) {
   unsigned shape_len;
   char *json = NULL;
   size_t capacity = 64;
@@ -313,10 +292,10 @@ static int exg_shape_to_json(ErlNifEnv *env, ERL_NIF_TERM shape_term,
       return 0;
     }
 
-    size_t needed = written + (i < shape_len - 1 ? 1 : 0); // +1 for comma
+    size_t needed = written + (i < shape_len - 1 ? 1 : 0);  // +1 for comma
 
     // Ensure capacity
-    while (pos + needed + 2 >= capacity) { // +2 for ']' and '\0'
+    while (pos + needed + 2 >= capacity) {  // +2 for ']' and '\0'
       capacity *= 2;
       char *new_json = enif_realloc(json, capacity);
       if (new_json == NULL) {
@@ -345,9 +324,8 @@ static int exg_shape_to_json(ErlNifEnv *env, ERL_NIF_TERM shape_term,
 }
 
 // Helper: Validate shape and check binary size
-static int exg_validate_shape_and_size(ErlNifEnv *env, ERL_NIF_TERM shape_term,
-                                       size_t element_size, size_t binary_size,
-                                       size_t *required_bytes_out,
+static int exg_validate_shape_and_size(ErlNifEnv *env, ERL_NIF_TERM shape_term, size_t element_size,
+                                       size_t binary_size, size_t *required_bytes_out,
                                        const char **error_msg) {
   unsigned shape_len;
 
@@ -399,12 +377,9 @@ static int exg_validate_shape_and_size(ErlNifEnv *env, ERL_NIF_TERM shape_term,
 }
 
 // Helper: Extract Array Interface components from tuple {binary, typestr, shape, readonly}
-int exg_get_array_interface_tuple(ErlNifEnv *env, ERL_NIF_TERM tuple_term,
-                                   ERL_NIF_TERM *binary_out,
-                                   ERL_NIF_TERM *typestr_out,
-                                   ERL_NIF_TERM *shape_out,
-                                   ERL_NIF_TERM *readonly_out,
-                                   const char **error_msg) {
+int exg_get_array_interface_tuple(ErlNifEnv *env, ERL_NIF_TERM tuple_term, ERL_NIF_TERM *binary_out,
+                                  ERL_NIF_TERM *typestr_out, ERL_NIF_TERM *shape_out,
+                                  ERL_NIF_TERM *readonly_out, const char **error_msg) {
   int arity = 0;
   const ERL_NIF_TERM *tuple_elements = NULL;
 
@@ -434,10 +409,9 @@ int exg_get_array_interface_tuple(ErlNifEnv *env, ERL_NIF_TERM tuple_term,
 // Helper to build Array Interface JSON from components with fresh address
 // Returns 1 on success, 0 on failure
 int exg_build_array_interface_json(ErlNifEnv *env, ERL_NIF_TERM binary_term,
-                                    ERL_NIF_TERM typestr_term,
-                                    ERL_NIF_TERM shape_term,
-                                    ERL_NIF_TERM readonly_term, char **json_out,
-                                    const char **error_msg) {
+                                   ERL_NIF_TERM typestr_term, ERL_NIF_TERM shape_term,
+                                   ERL_NIF_TERM readonly_term, char **json_out,
+                                   const char **error_msg) {
   ErlNifBinary data_bin;
   char *typestr = NULL;
   char *shape_json = NULL;
@@ -474,8 +448,8 @@ int exg_build_array_interface_json(ErlNifEnv *env, ERL_NIF_TERM binary_term,
 
   // Validate shape dimensions and binary size
   size_t required_bytes = 0;
-  if (!exg_validate_shape_and_size(env, shape_term, element_size, data_bin.size,
-                                    &required_bytes, error_msg)) {
+  if (!exg_validate_shape_and_size(env, shape_term, element_size, data_bin.size, &required_bytes,
+                                   error_msg)) {
     goto CLEANUP;
   }
 
@@ -491,8 +465,7 @@ int exg_build_array_interface_json(ErlNifEnv *env, ERL_NIF_TERM binary_term,
   int needed = snprintf(NULL, 0,
                         "{\"typestr\":\"%s\",\"shape\":%s,"
                         "\"data\":[%" PRIuPTR ",%s],\"version\":3}",
-                        typestr, shape_json, address,
-                        readonly ? "true" : "false");
+                        typestr, shape_json, address, readonly ? "true" : "false");
 
   if (needed < 0) {
     *error_msg = "Failed to calculate JSON size";
@@ -510,8 +483,7 @@ int exg_build_array_interface_json(ErlNifEnv *env, ERL_NIF_TERM binary_term,
   int written = snprintf(json, (size_t)needed + 1,
                          "{\"typestr\":\"%s\",\"shape\":%s,"
                          "\"data\":[%" PRIuPTR ",%s],\"version\":3}",
-                         typestr, shape_json, address,
-                         readonly ? "true" : "false");
+                         typestr, shape_json, address, readonly ? "true" : "false");
 
   if (written != needed) {
     *error_msg = "Failed to construct array interface JSON";
@@ -539,8 +511,7 @@ CLEANUP:
   return ok;
 }
 
-ERL_NIF_TERM exg_get_int_size(ErlNifEnv *env, int argc,
-                              const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM exg_get_int_size(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   ERL_NIF_TERM ret = 0;
   if (argc != 0) {
     ret = exg_error(env, "exg_get_int_size doesn't take any arguments");
@@ -553,30 +524,12 @@ END:
 }
 
 // So we don't expose ATOM_* directly to other files, provide a wrapper function.
-int exg_make_array_interface_map(
-    ErlNifEnv *env,
-    ERL_NIF_TERM binary_term,
-    ERL_NIF_TERM typestr_term,
-    ERL_NIF_TERM shape_term,
-    ERL_NIF_TERM *out_map
-) {
-  ERL_NIF_TERM keys[] = {
-    ATOM_BINARY,
-    ATOM_TYPESTR,
-    ATOM_SHAPE
-  };
+int exg_make_array_interface_map(ErlNifEnv *env, ERL_NIF_TERM binary_term,
+                                 ERL_NIF_TERM typestr_term, ERL_NIF_TERM shape_term,
+                                 ERL_NIF_TERM *out_map) {
+  ERL_NIF_TERM keys[] = {ATOM_BINARY, ATOM_TYPESTR, ATOM_SHAPE};
 
-  ERL_NIF_TERM values[] = {
-    binary_term,
-    typestr_term,
-    shape_term
-  };
+  ERL_NIF_TERM values[] = {binary_term, typestr_term, shape_term};
 
-  return enif_make_map_from_arrays(
-      env,
-      keys,
-      values,
-      3,
-      out_map
-  );
+  return enif_make_map_from_arrays(env, keys, values, 3, out_map);
 }
