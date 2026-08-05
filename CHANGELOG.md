@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Incremental builds now refresh the packaged XGBoost library instead of nesting the new library under an existing `priv/lib` directory.
 - Fix precompiled nif download; tags now X.Y.Z not vX.Y.Z.
 - Remove older nif versions from precompiled list.
+- Ensure checksum SHA's are part of the precompiled packages.
 
 ### Removed
 
