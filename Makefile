@@ -13,7 +13,22 @@ XGBOOST_GIT_REV ?= v3.3.0
 OLD_XGBOOST_GIT_REV ?= v3.2.0
 NEW_XGBOOST_GIT_REV ?= $(XGBOOST_GIT_REV)
 
-XGBOOST_NS = xgboost-$(XGBOOST_GIT_REV)
+# Optional XGBoost build features
+USE_CUDA ?= OFF
+CUDA_ARCHITECTURES ?=
+USE_NCCL ?= OFF
+
+ifeq ($(USE_CUDA),ON)
+	XGBOOST_BUILD_VARIANT := cuda
+
+	ifneq ($(CUDA_ARCHITECTURES),)
+		XGBOOST_BUILD_VARIANT := $(XGBOOST_BUILD_VARIANT)-sm$(subst ;,-sm,$(CUDA_ARCHITECTURES))
+	endif
+else
+	XGBOOST_BUILD_VARIANT := cpu
+endif
+
+XGBOOST_NS = xgboost-$(XGBOOST_GIT_REV)-$(XGBOOST_BUILD_VARIANT)
 XGBOOST_DIR = $(XGBOOST_CACHE)/$(XGBOOST_NS)
 XGBOOST_LIB_DIR = $(XGBOOST_DIR)/build/xgboost
 XGBOOST_LIB_DIR_FLAG = $(XGBOOST_LIB_DIR)/exgboost.ok
@@ -37,9 +52,17 @@ EXGBOOST_LIB_DIR = $(PRIV_DIR)/lib
 
 # Build flags
 CFLAGS = -I$(EXGBOOST_DIR)/include -I$(XGBOOST_LIB_DIR)/include -I$(XGBOOST_DIR) $(if $(ERTS_INCLUDE_DIR),-I$(ERTS_INCLUDE_DIR)) -fPIC -O3 -shared -std=c11
+CMAKE_FLAGS += -DUSE_CUDA=$(USE_CUDA)
+
+ifeq ($(USE_CUDA),ON)
+	CMAKE_FLAGS += -DUSE_NCCL=$(USE_NCCL)
+
+	ifneq ($(CUDA_ARCHITECTURES),)
+		CMAKE_FLAGS += -DCMAKE_CUDA_ARCHITECTURES=$(CUDA_ARCHITECTURES)
+	endif
+endif
 
 C_SRCS = $(wildcard $(EXGBOOST_DIR)/src/*.c) $(wildcard $(EXGBOOST_DIR)/include/*.h)
-
 LDFLAGS = -L$(EXGBOOST_CACHE_LIB_DIR) -lxgboost
 
 ifeq ($(shell uname -s), Darwin)
@@ -116,3 +139,12 @@ clean:
 	rm -rf $(EXGBOOST_LIB_DIR)
 	rm -rf $(XGBOOST_DIR)
 	rm -rf $(XGBOOST_LIB_DIR_FLAG)
+
+print-build-config:
+	@echo "XGBoost revision:       $(XGBOOST_GIT_REV)"
+	@echo "Build variant:          $(XGBOOST_BUILD_VARIANT)"
+	@echo "CUDA enabled:           $(USE_CUDA)"
+	@echo "CUDA architectures:     $(CUDA_ARCHITECTURES)"
+	@echo "NCCL enabled:           $(USE_NCCL)"
+	@echo "XGBoost cache:          $(XGBOOST_DIR)"
+	@echo "CMake flags:            $(CMAKE_FLAGS)"
