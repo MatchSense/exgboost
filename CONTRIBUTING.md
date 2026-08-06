@@ -19,6 +19,37 @@ mix compile
 mix test
 ```
 
+## Devcontainer Choice
+
+Keep both devcontainers. The CUDA devcontainer is the practical day-to-day environment when working on GPU support because it can build and test CUDA variants, and it can still build the CPU variant when needed.
+
+Use `.devcontainer/cuda/devcontainer.json` for:
+
+- Developing CUDA support.
+- Building or testing `EXGBOOST_TARGET=cuda*`.
+- Running GPU smoke tests or benchmarks.
+- Building CPU code when a CUDA-capable image is acceptable.
+
+Use `.devcontainer/devcontainer.json` for:
+
+- Checking the default contributor experience.
+- Verifying CPU-only builds do not accidentally depend on CUDA libraries or the CUDA toolkit.
+- Reproducing what normal CPU CI and CPU Hex users see.
+
+Inside the CUDA devcontainer, force a CPU build with:
+
+```bash
+CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true EXGBOOST_TARGET=cpu mix compile --force
+```
+
+Force a CUDA build with:
+
+```bash
+CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true EXGBOOST_TARGET=cuda89 mix compile --force
+```
+
+For local development, `CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true` avoids download attempts for release artifacts that do not exist yet.
+
 ## NIF Development - DO's and DON'Ts
 
 ### Memory Management

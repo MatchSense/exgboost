@@ -175,22 +175,21 @@ by multiple tasks in calling applications.
 
 ### Precompiled Distribution
 
-We currently offer the following precompiled packages for EXGBoost:
+EXGBoost can use precompiled NIF artifacts when a matching release asset and checksum are available. CPU artifacts are the default distribution path and include the `cpu` variant in the artifact name, for example:
 
-```elixir
-%{
-  "exgboost-nif-2.16-aarch64-apple-darwin-0.5.0.tar.gz" => "sha256:c659d086d07e9c209bdffbbf982951c6109b2097c4d3008ef9af59c3050663d2",
-  "exgboost-nif-2.16-x86_64-apple-darwin-0.5.0.tar.gz" => "sha256:05256238700456c57e279558765b54b5b5ed4147878c6861cd4c937472abbe52",
-  "exgboost-nif-2.16-x86_64-linux-gnu-0.5.0.tar.gz" => "sha256:ad3ba6aba8c3c2821dce4afc05b66a5e529764e0cea092c5a90e826446653d99",
-  "exgboost-nif-2.17-aarch64-apple-darwin-0.5.0.tar.gz" => "sha256:745e7e970316b569a10d76ceb711b9189360b3bf9ab5ee6133747f4355f45483",
-  "exgboost-nif-2.17-x86_64-apple-darwin-0.5.0.tar.gz" => "sha256:73948d6f2ef298e3ca3dceeca5d8a36a2d88d842827e1168c64589e4931af8d7",
-  "exgboost-nif-2.17-x86_64-linux-gnu-0.5.0.tar.gz" => "sha256:a0b5ff0b074a9726c69d632b2dc0214fc7b66dccb4f5879e01255eeb7b9d4282",
-}
+```text
+exgboost-nif-2.18-x86_64-linux-gnu-cpu-0.11.0.tar.gz
+exgboost-nif-2.18-aarch64-apple-darwin-cpu-0.11.0.tar.gz
 ```
 
-The correct package will be downloaded and installed (if supported) when you install
-the dependency through Mix (as shown above), otherwise you will need to compile
-manually.
+CUDA artifacts are Linux-only opt-in variants selected with `EXGBOOST_TARGET`, for example:
+
+```text
+exgboost-nif-2.18-x86_64-linux-gnu-cuda89-0.11.0.tar.gz
+exgboost-nif-2.18-x86_64-linux-gnu-cuda80_86_89_90-0.11.0.tar.gz
+```
+
+The correct package will be downloaded and installed when supported by the release checksums. If no matching artifact is available, EXGBoost falls back to source compilation.
 
 **NOTE** If MacOS, you still need to install `libomp` even to use the precompiled libraries:
 
@@ -224,7 +223,7 @@ You also need to set `CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true` before the firs
 
 CUDA support is built from source. The normal devcontainer remains CPU-only; use `.devcontainer/cuda/devcontainer.json` when you want XGBoost compiled with GPU support.
 
-See [docs/cuda.md](docs/cuda.md) for host setup, CUDA architecture selection, using EXGBoost as a dependency in another app, benchmark commands, and notes on why the default precompiled distribution remains CPU-only.
+See [docs/cuda.md](docs/cuda.md) for host setup, devcontainer choice, CUDA architecture selection, using EXGBoost as a dependency in another app, benchmark commands, and prebuilt artifact notes.
 
 Quick local verification from a CUDA-enabled build:
 

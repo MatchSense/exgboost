@@ -29,6 +29,8 @@ docker run --rm --gpus all \
 
 The CUDA image tag should be compatible with the CUDA version reported by host `nvidia-smi`. The CUDA devcontainer currently uses `nvidia/cuda:13.2.1-devel-ubuntu24.04`, so a host driver that supports CUDA 13.2 or newer is expected.
 
+Contributor devcontainer guidance lives in [CONTRIBUTING.md](../CONTRIBUTING.md#devcontainer-choice).
+
 ## Development In This Repo
 
 Open the repo with `.devcontainer/cuda/devcontainer.json`. The CUDA devcontainer sets these environment variables automatically:
@@ -82,7 +84,13 @@ Run the Covertype benchmark from a CUDA-enabled build with:
 mix run bench/covtype.exs
 ```
 
-Use `DEVICE=cpu`, `DEVICE=cuda`, or `DEVICE=both` to select benchmark devices. Generated benchmark data is stored under `bench/data`, which is ignored by git.
+Use `DEVICE=cpu`, `DEVICE=cuda`, or `DEVICE=both` to select benchmark devices, e.g.
+
+```bash
+DEVICE=both mix run bench/covtype.exs
+```
+
+Generated benchmark data is stored under `bench/data`, which is ignored by git.
 
 ## Manual CUDA Builds
 
@@ -102,6 +110,12 @@ For broad Ampere-and-newer coverage, use:
 
 ```bash
 USE_CUDA=ON USE_NCCL=OFF CUDA_ARCHITECTURES='80;86;89;90' mix compile
+```
+
+The same build can also be selected with `EXGBOOST_TARGET`, which is the variant name used for precompiled artifact lookup:
+
+```bash
+EXGBOOST_TARGET=cuda80_86_89_90 mix compile
 ```
 
 That covers:
@@ -188,6 +202,22 @@ end
 
 The runtime environment must also expose compatible NVIDIA drivers, CUDA runtime libraries, and GPU devices. For Docker this usually means launching with `--gpus all`; for Kubernetes this usually means using the NVIDIA device plugin.
 
+## CUDA Toolkit And Architecture Compatibility
+
+The CUDA build image supplies the compiler toolchain. A machine does not need a specific GPU model to compile for that GPU architecture. For example, `nvidia/cuda:13.2.1-devel-ubuntu24.04` can build all supported Ampere-and-newer variants used by EXGBoost:
+
+```bash
+EXGBOOST_TARGET=cuda80 mix elixir_make.precompile
+EXGBOOST_TARGET=cuda86 mix elixir_make.precompile
+EXGBOOST_TARGET=cuda89 mix elixir_make.precompile
+EXGBOOST_TARGET=cuda90 mix elixir_make.precompile
+EXGBOOST_TARGET=cuda80_86_89_90 mix elixir_make.precompile
+```
+
+Those targets map to `CUDA_ARCHITECTURES=80`, `86`, `89`, `90`, or `80;86;89;90` respectively. Each target gets its own artifact variant and XGBoost source build cache.
+
+A newer CUDA toolkit can generally compile for older supported SM architectures, but not for architectures it has dropped or does not know about. Runtime validation still requires compatible GPU hardware and a host NVIDIA driver new enough for the CUDA runtime used by the build.
+
 ## Build Without A Local GPU
 
 A local GPU is not required to compile CUDA code. It is required to run or test CUDA execution.
@@ -206,21 +236,27 @@ EXGBOOST_TEST_DEVICE=cuda mix test test/build_device_test.exs
 
 ## Prebuilt CUDA Artifacts
 
-A CUDA prebuilt artifact would let consuming apps avoid installing compilers, CMake, Ninja, and the CUDA toolkit just to compile EXGBoost. The current normal `elixir_make` / `cc_precompiler` artifact naming scheme distinguishes NIF ABI, platform, and package version. It does not distinguish CPU versus CUDA builds, CUDA toolkit versions, or CUDA architecture sets.
+A CUDA prebuilt artifact lets consuming apps avoid installing compilers, CMake, Ninja, and the CUDA toolkit just to compile EXGBoost.
 
-A normal precompiled artifact is named like:
+EXGBoost uses an Evision-inspired variant naming model for CPU and CUDA artifacts. [Evision](https://github.com/cocoa-xu/evision) is an Apache-2.0 licensed Elixir OpenCV binding that uses explicit precompiled artifact variants for CPU, contrib, CUDA, and cuDNN builds. The EXGBoost implementation follows that packaging pattern without copying Evision code.
+
+`EXGBOOST_TARGET` selects the variant used for artifact lookup and source-build fallback. Supported values are:
+
+- `cpu`
+- `cuda80`
+- `cuda86`
+- `cuda89`
+- `cuda90`
+- `cuda80_86_89_90`
+
+The normal `elixir_make` / `cc_precompiler` artifact naming scheme distinguishes NIF ABI, platform, and package version. It does not distinguish CPU versus CUDA builds, CUDA toolkit versions, or CUDA architecture sets. EXGBoost adds the variant to the target portion of the artifact name.
+
+Examples:
 
 ```text
-exgboost-nif-2.18-x86_64-linux-gnu-0.11.0.tar.gz
+exgboost-nif-2.18-x86_64-linux-gnu-cpu-0.11.0.tar.gz
+exgboost-nif-2.18-x86_64-linux-gnu-cuda89-0.11.0.tar.gz
+exgboost-nif-2.18-x86_64-linux-gnu-cuda80_86_89_90-0.11.0.tar.gz
 ```
 
-That name would collide for all of these variants:
-
-- CPU Linux x86_64.
-- CUDA Linux x86_64 for `sm_80`.
-- CUDA Linux x86_64 for `sm_86`.
-- CUDA Linux x86_64 for `sm_89`.
-- CUDA Linux x86_64 for `sm_90`.
-- One broad CUDA Linux x86_64 build for `80;86;89;90`.
-
-For that reason, the default precompiled distribution path should remain CPU-only unless EXGBoost adds custom artifact naming and downloader logic, a separate CUDA package, or a separate manual CUDA release asset workflow. Until then, users who need CUDA without a local build toolchain would need an explicitly named release asset outside the normal Hex precompile path.
+This keeps one Hex package while avoiding CPU/CUDA artifact collisions. CPU artifacts remain the default release path. CUDA artifacts should initially be Linux-only and opt-in through `EXGBOOST_TARGET`, with runtime validation performed on GPU-capable runners or deployment hosts.

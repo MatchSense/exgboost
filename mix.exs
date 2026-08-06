@@ -7,7 +7,7 @@ defmodule EXGBoost.MixProject do
     [
       app: :exgboost,
       version: @version,
-      make_precompiler: {:nif, CCPrecompiler},
+      make_precompiler: {:nif, EXGBoost.Precompiler},
       make_precompiler_url:
         "https://github.com/iperks/exgboost/releases/download/#{@version}/@{artefact_filename}",
       make_precompiler_priv_paths: ["libexgboost.*", "lib"],
@@ -183,4 +183,168 @@ defmodule EXGBoost.MixProject do
   end
 
   defp before_closing_body_tag(_), do: ""
+end
+
+defmodule EXGBoost.Precompiler do
+  @moduledoc """
+  A custom CC precompiler for EXGBoost NIF library.
+  """
+
+  # Variant-aware artifact naming follows Evision's CPU/CUDA packaging pattern
+  # without copying its implementation. The callbacks implement the elixir_make
+  # precompiler behaviour documented at:
+  # https://elixir-make.hexdocs.pm/precompilation_guide.html#precompiler-module-developer
+  @cpu_variant "cpu"
+  @broad_cuda_variant "cuda80_86_89_90"
+  @cuda_variants %{
+    "cuda80" => "80",
+    "cuda86" => "86",
+    "cuda89" => "89",
+    "cuda90" => "90",
+    @broad_cuda_variant => "80;86;89;90"
+  }
+  @variants [@cpu_variant | Map.keys(@cuda_variants)]
+  @cuda_fetch_targets ["x86_64-linux-gnu"]
+
+  def current_target do
+    with {:ok, target} <- CCPrecompiler.current_target() do
+      {:ok, variant_target(target, selected_variant!())}
+    end
+  end
+
+  def all_supported_targets(:compile) do
+    variant = selected_variant!()
+
+    CCPrecompiler.all_supported_targets(:compile)
+    |> Enum.filter(&target_supports_variant?(&1, variant))
+    |> Enum.map(&variant_target(&1, variant))
+  end
+
+  def all_supported_targets(:fetch) do
+    base_targets = CCPrecompiler.all_supported_targets(:fetch)
+
+    cpu_targets = Enum.map(base_targets, &variant_target(&1, @cpu_variant))
+
+    cuda_targets =
+      for target <- base_targets,
+          target in @cuda_fetch_targets,
+          variant <- Map.keys(@cuda_variants) do
+        variant_target(target, variant)
+      end
+
+    cpu_targets ++ cuda_targets
+  end
+
+  def build_native(args) do
+    with_variant_env(selected_variant!(), fn ->
+      ElixirMake.Precompiler.mix_compile(args)
+    end)
+  end
+
+  def precompile(args, target) do
+    {base_target, variant} = split_variant_target!(target)
+
+    with_variant_env(variant, fn ->
+      CCPrecompiler.precompile(args, base_target)
+    end)
+  end
+
+  def post_precompile_target(target) do
+    {base_target, _variant} = split_variant_target!(target)
+    CCPrecompiler.post_precompile_target(base_target)
+  end
+
+  def unavailable_target(_target), do: :compile
+
+  defp selected_variant! do
+    explicit_target = System.get_env("EXGBOOST_TARGET")
+
+    variant =
+      cond do
+        explicit_target not in [nil, ""] ->
+          explicit_target
+
+        System.get_env("USE_CUDA") == "ON" ->
+          cuda_variant_from_architectures(System.get_env("CUDA_ARCHITECTURES"))
+
+        true ->
+          @cpu_variant
+      end
+
+    validate_variant!(variant)
+  end
+
+  defp cuda_variant_from_architectures(nil), do: @broad_cuda_variant
+  defp cuda_variant_from_architectures(""), do: @broad_cuda_variant
+
+  defp cuda_variant_from_architectures(architectures) do
+    variant = "cuda" <> String.replace(architectures, ";", "_")
+
+    if Map.has_key?(@cuda_variants, variant) do
+      variant
+    else
+      @broad_cuda_variant
+    end
+  end
+
+  defp validate_variant!(variant) when variant in @variants, do: variant
+
+  defp validate_variant!(variant) do
+    Mix.raise(
+      "EXGBOOST_TARGET must be one of #{Enum.join(@variants, ", ")}; got #{inspect(variant)}"
+    )
+  end
+
+  defp target_supports_variant?(_target, @cpu_variant), do: true
+  defp target_supports_variant?(target, _cuda_variant), do: target in @cuda_fetch_targets
+
+  defp variant_target(target, variant), do: target <> "-" <> variant
+
+  defp split_variant_target!(target) do
+    case Enum.find(@variants, &String.ends_with?(target, "-" <> &1)) do
+      nil ->
+        Mix.raise("cannot determine EXGBoost precompiled variant from target #{inspect(target)}")
+
+      variant ->
+        base_target = String.replace_suffix(target, "-" <> variant, "")
+        {base_target, variant}
+    end
+  end
+
+  defp with_variant_env(variant, fun) when is_function(fun, 0) do
+    saved_env =
+      for name <- ["USE_CUDA", "USE_NCCL", "CUDA_ARCHITECTURES"], into: %{} do
+        {name, System.get_env(name)}
+      end
+
+    apply_variant_env(variant)
+
+    try do
+      fun.()
+    after
+      restore_env(saved_env)
+    end
+  end
+
+  defp apply_variant_env(@cpu_variant) do
+    System.put_env("USE_CUDA", "OFF")
+    System.put_env("USE_NCCL", System.get_env("USE_NCCL") || "OFF")
+    System.delete_env("CUDA_ARCHITECTURES")
+  end
+
+  defp apply_variant_env(variant) do
+    System.put_env("USE_CUDA", "ON")
+    System.put_env("USE_NCCL", System.get_env("USE_NCCL") || "OFF")
+    System.put_env("CUDA_ARCHITECTURES", Map.fetch!(@cuda_variants, variant))
+  end
+
+  defp restore_env(saved_env) do
+    for {name, value} <- saved_env do
+      if is_nil(value) do
+        System.delete_env(name)
+      else
+        System.put_env(name, value)
+      end
+    end
+  end
 end
