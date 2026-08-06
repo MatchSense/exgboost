@@ -23,7 +23,7 @@ billions of examples.
 ```elixir
 def deps do
 [
-  {:exgboost, "~> 0.5"}
+  {:exgboost, "~> 0.11"}
 ]
 end
 ```
@@ -214,10 +214,34 @@ You also need to set `CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true` before the firs
 
 - The XGBoost C API uses C function pointers to implement streaming data types.  The Python ctypes library is able to pass function pointers to the C API which are then executed by XGBoost. Erlang/Elixir NIFs do not have this capability, and as such, streaming data types are not supported in EXGBoost.
 <!-- END MODULEDOC -->
+
 ## Roadmap
 
-- [ ] CUDA support
+- [x] CUDA support
 - [ ] [Collective API](https://xgboost.readthedocs.io/en/latest/c.html#collective)?
+
+## CUDA support
+
+CUDA support is built from source. The normal devcontainer remains CPU-only; use `.devcontainer/cuda/devcontainer.json` when you want XGBoost compiled with GPU support.
+
+See [docs/cuda.md](docs/cuda.md) for host setup, CUDA architecture selection, using EXGBoost as a dependency in another app, benchmark commands, and notes on why the default precompiled distribution remains CPU-only.
+
+Quick local verification from a CUDA-enabled build:
+
+```bash
+mix test test/build_device_test.exs
+EXGBOOST_TEST_DEVICE=cuda mix test test/build_device_test.exs
+```
+
+Quick dependency build command for a consuming app:
+
+```bash
+CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL=true \
+USE_CUDA=ON \
+USE_NCCL=OFF \
+CUDA_ARCHITECTURES='80;86;89;90' \
+mix deps.compile exgboost --force
+```
 
 ## License
 

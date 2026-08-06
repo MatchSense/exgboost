@@ -1,21 +1,24 @@
 {
-  "name": "EXGBoost Erlang 29 GCC 14 (CPU)",
+  "name": "EXGBoost Erlang 29 GCC 14 (CUDA)",
   "build": {
     "dockerfile": "Dockerfile",
-    "context": ".."
+    "context": "../.."
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
   "workspaceFolder": "/workspace",
   "containerEnv": {
-    "CC": "gcc-14",
-    "CXX": "g++-14",
-    "MIX_ENV": "dev"
+    "MIX_ENV": "dev",
+    "USE_CUDA": "ON",
+    "USE_NCCL": "OFF",
+    "NVIDIA_VISIBLE_DEVICES": "all",
+    "NVIDIA_DRIVER_CAPABILITIES": "compute,utility"
   },
   "customizations": {
     "vscode": {
       "extensions": [
         "jakebecker.elixir-ls",
-        "xaver.clang-format"
+        "xaver.clang-format",
+        "openai.chatgpt"
       ]
     }
   },
@@ -34,6 +37,7 @@
     }
   },
   "runArgs": [
+    "--gpus=all",
     "--dns=172.100.61.53",
     "--network=network.ss"
   ]
