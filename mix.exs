@@ -194,6 +194,8 @@ defmodule EXGBoost.Precompiler do
   # without copying its implementation. The callbacks implement the elixir_make
   # precompiler behaviour documented at:
   # https://elixir-make.hexdocs.pm/precompilation_guide.html#precompiler-module-developer
+  @behaviour ElixirMake.Precompiler
+
   @cpu_variant "cpu"
   @broad_cuda_variant "cuda80_86_89_90"
   @cuda_variants %{
@@ -206,12 +208,14 @@ defmodule EXGBoost.Precompiler do
   @variants [@cpu_variant | Map.keys(@cuda_variants)]
   @cuda_fetch_targets ["x86_64-linux-gnu"]
 
+  @impl ElixirMake.Precompiler
   def current_target do
     with {:ok, target} <- CCPrecompiler.current_target() do
       {:ok, variant_target(target, selected_variant!())}
     end
   end
 
+  @impl ElixirMake.Precompiler
   def all_supported_targets(:compile) do
     variant = selected_variant!()
 
@@ -220,6 +224,7 @@ defmodule EXGBoost.Precompiler do
     |> Enum.map(&variant_target(&1, variant))
   end
 
+  @impl ElixirMake.Precompiler
   def all_supported_targets(:fetch) do
     base_targets = CCPrecompiler.all_supported_targets(:fetch)
 
@@ -235,12 +240,14 @@ defmodule EXGBoost.Precompiler do
     cpu_targets ++ cuda_targets
   end
 
+  @impl ElixirMake.Precompiler
   def build_native(args) do
     with_variant_env(selected_variant!(), fn ->
       ElixirMake.Precompiler.mix_compile(args)
     end)
   end
 
+  @impl ElixirMake.Precompiler
   def precompile(args, target) do
     {base_target, variant} = split_variant_target!(target)
 
@@ -249,11 +256,13 @@ defmodule EXGBoost.Precompiler do
     end)
   end
 
+  @impl ElixirMake.Precompiler
   def post_precompile_target(target) do
     {base_target, _variant} = split_variant_target!(target)
     CCPrecompiler.post_precompile_target(base_target)
   end
 
+  @impl ElixirMake.Precompiler
   def unavailable_target(_target), do: :compile
 
   defp selected_variant! do
