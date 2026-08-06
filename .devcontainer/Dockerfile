@@ -32,13 +32,13 @@ RUN apt-get update && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
 
-RUN useradd -m -s /bin/zsh -u 1000 -G sudo dev && \
-  echo 'dev ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/dev && \
-  chmod 0440 /etc/sudoers.d/dev && \
-  mkdir -p /workspace && \
-  chown dev:dev /workspace
+RUN useradd -m -s /bin/zsh -G sudo ubuntu && \
+    echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ubuntu && \
+    chmod 0440 /etc/sudoers.d/ubuntu && \
+    mkdir -p /workspace && \
+    chown ubuntu:ubuntu /workspace
 
-USER dev
+USER ubuntu
 
 RUN git config --global --add safe.directory /workspace && \
   mix local.hex --force && \

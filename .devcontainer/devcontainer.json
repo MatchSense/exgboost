@@ -1,5 +1,5 @@
 {
-  "name": "EXGBoost Erlang 29 GCC 14",
+  "name": "EXGBoost Erlang 29 GCC 14 (CPU)",
   "build": {
     "dockerfile": "Dockerfile",
     "context": ".."
@@ -20,7 +20,9 @@
     }
   },
   "postCreateCommand": "mix deps.get",
-  "remoteUser": "dev",
+  "remoteUser": "ubuntu",
+  "containerUser": "ubuntu",
+  "updateRemoteUserUID": true,
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "configureZshAsDefaultShell": true
