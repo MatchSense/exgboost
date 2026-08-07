@@ -259,4 +259,10 @@ exgboost-nif-2.18-x86_64-linux-gnu-cuda89-0.11.0.tar.gz
 exgboost-nif-2.18-x86_64-linux-gnu-cuda80_86_89_90-0.11.0.tar.gz
 ```
 
+### NIF ABI Compatibility
+
+The NIF ABI is tied to the Erlang/OTP release, independently of the CPU or CUDA variant. OTP 28 uses NIF `2.17`; OTP 29 uses NIF `2.18`. A precompiled NIF must match the ABI used by the consuming application.
+
+The Linux CPU release workflow builds both supported ABIs. The CUDA release workflow currently builds OTP 29 / NIF `2.18` only. Therefore an OTP 28 application that selects a CUDA target will compile EXGBoost from source until a matching NIF `2.17` CUDA artifact is published.
+
 This keeps one Hex package while avoiding CPU/CUDA artifact collisions. CPU artifacts remain the default release path. CUDA artifacts should initially be Linux-only and opt-in through `EXGBOOST_TARGET`, with runtime validation performed on GPU-capable runners or deployment hosts.
